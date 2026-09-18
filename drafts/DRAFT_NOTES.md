@@ -87,7 +87,7 @@ paragraph remains. Build and rendering logs are in `tmp/pdfs/`.
 
 ## Lean status at delivery
 
-Checked `/private/tmp/claude-501/-Users-ahle-repos-fast-polynomials/624f2aa7-83b9-480b-aeba-96fbb5117dcd/scratchpad/codex/lean-halftime/LEAN_HALFTIME_STATUS.md` at **2026-09-18T14:03:37+02:00**.
+Checked `<workspace>/codex/lean-halftime/LEAN_HALFTIME_STATUS.md` at **2026-09-18T14:03:37+02:00**.
 
 The requested file is absent; Section 6 therefore says **in progress**, as requested.
 A differently named `LEAN_STATUS.md` is not treated as the requested final status file.

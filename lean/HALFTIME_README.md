@@ -6,8 +6,8 @@ The inherited `README.md`, `Audit.lean`, and `FullAudit.lean` describe the base
 project; they do not establish the HalftimeHash milestones.
 
 All compilation was performed on `hardware.normalcomputing.net` in
-`/home/thomas-ahle/agents/lean-halftime/lean`, using the cache copied from
-`/home/thomas-ahle/agents/lean-hash`. The source mirror excludes `.lake`, `.git`,
+`<xeon>/lean-halftime/lean`, using the cache copied from
+`<xeon>/lean-hash`. The source mirror excludes `.lake`, `.git`,
 the Lean installation, and binary artifacts. The Mac only performs editing,
 small file operations, and SSH/rsync transport.
 
