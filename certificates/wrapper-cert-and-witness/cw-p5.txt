@@ -1,0 +1,50 @@
+UNIVERSAL CLASSES OF HASH FUNCTIONS 147
+
+mately 1. Proposition 3 then implies that the expected cost of processing a sequence
+of requests is linear in the number of requests. Notice that this linear bound holds
+for any sequence of requests, not just for the “average” sequence. Fagin, Nievergelt,
+Pippenger and Strong [2] have developed an extendible hashing scheme which achieves
+the linear time bound even when there is no estimate on | S|. Their system involves
+little overhead, and only requires local remapping of data as | S| expands or contracts.
+
+Proposition 2 is helpful for other applications of hashing as well. For instance, an
+optical character reader postprocessing system is described in [9]. This system is designed
+to check if a word « is a member of a set of valid words S, The set { f(y) | S} is
+stored in memory. To test whether x is in S, a check is made to see if f(x) is in the stored
+set. Since f(y) is generally shorter than y, a considerable amount of space is saved.
+However, there is a chance of error; if f(x) = f(y) for some y € S, then x may erroneously
+be accepted as valid.
+
+Proposition 2 gives a hound on the probability of error when f is chosen from a class
+of universal, functions, and suggests that to achieve an error probability of less than p,
+we should let B have size | S |/p. To be precise, Proposition 2 says that if x and S are
+specified, then a randomly chosen f will erroneously accept x with probability less than
+1/p. This is not the order of doing things which will occur in practice of course. First
+f is chosen by the system designer, then x is input by the user. However, assuming
+that the user does not choose « based on any knowledge of the hash function chosen,
+the order of choice is immaterial to the probability.
+
+We no not intend to imply that all functions in a universal, class are equally good:
+conceivably there is a function which maps each input into the same element of B,
+and another which maps each element of S into one element of B and maps everything
+else into a different index. The first function would accept any « as valid, whereas the
+second would never make a mistake. What is gained by using a universal, class is the
+knowledge that if one has simply made a random choice of hash function from such
+a class there is a favorable probability that a given mistake will be caught. Intuitively,
+we are saying that a universal, class contains enough good functions that a random choice
+is very likely to be a good choice. In particular, we need not be concerned with statistics
+on the frequencies of English letter combinations or with probable spelling errors.
+
+For some applications of hashing, it is not enough to know that the average performance
+will be good. ‘There may be some level of performance such that any worse performance
+would not be tolerated. For instance, in an online application, we may want some
+assurance that no individual transaction will cost more than, say, ¢ times the expected
+cost. The next proposition gives some assurance in this direction.
+
+PROPOSITION 4. Let xe A and SC A. Let yp be the expected value of &,(x, S). (By
+Proposition 2, p< \S({| B\.} Choose f at random from a universal, collection of functions,
+H. Then the probability that 8,(x, S) > ty is less than 1/t.
+
+Proof. The collection of numbers {5,(x, S)| fe H} has mean » but no negative
+numbers. Thus, for each function with 8,(x, S) > tz, there must be more than t — |
+functions with 8,(x, S) <p to keep the mean down to «. ff

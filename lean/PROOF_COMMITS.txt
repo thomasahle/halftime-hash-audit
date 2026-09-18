@@ -1,0 +1,7 @@
+Base ProvenHashes: e70213feed3dac6280fe8d7ecdc35dcfd0cf1cc8
+M2 / initial NH and forest: 32520551825a5ea4fb8d9c23632f88d5a63eb5d2
+M1 / M3: e29040eff70f694b045f2db92c7fca6a8770b342
+M4 / final 127-proof audit: ac26ea51fa8f221d150eaa49f6730ba65be3aa02
+M5 / abstract Style model / 237-proof audit: 0f9aabf3c3fcb08470e30a7f42f16270f028e128
+Mathlib v4.24.0: f897ebcf72cd16f89ab4577d0c826cd14afaafc7
+Lean: leanprover/lean4:v4.24.0

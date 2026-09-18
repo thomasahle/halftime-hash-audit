@@ -1,0 +1,264 @@
+{
+  "primitive_generator_37": true,
+  "nh_raw_unequal_zero_extension": {
+    "w": 2,
+    "colliding_keys": 7,
+    "total_keys": 16
+  },
+  "polymur": {
+    "N_factors": {
+      "2": 1,
+      "3": 2,
+      "5": 2,
+      "7": 1,
+      "11": 1,
+      "13": 1,
+      "31": 1,
+      "41": 1,
+      "61": 1,
+      "151": 1,
+      "331": 1,
+      "1321": 1
+    },
+    "phi_m": 67744512000000000,
+    "squarefree_divisors_m": 2048,
+    "interval_H": 1080863910568919039,
+    "main_fraction": "88754664436246136563107840000000/465826870548221",
+    "character_sum_upper": 65295510750,
+    "error_upper": 802351236096000,
+    "K_lower": 189729088763903999,
+    "log2_K_lower": 57.396718498994225,
+    "score_lower": 54.22679349755191
+  },
+  "halftime_minors": {
+    "count": 84,
+    "max_full_v2": 2,
+    "max_partial_kernel_sums": [
+      6,
+      9,
+      4
+    ],
+    "witnesses": [
+      {
+        "columns": [
+          0,
+          1,
+          3
+        ],
+        "coefficients": [
+          6,
+          9,
+          4
+        ]
+      },
+      {
+        "columns": [
+          1,
+          4,
+          5
+        ],
+        "coefficients": [
+          6,
+          9,
+          4
+        ]
+      },
+      {
+        "columns": [
+          2,
+          3,
+          5
+        ],
+        "coefficients": [
+          6,
+          9,
+          4
+        ]
+      }
+    ]
+  },
+  "asu_witness": [
+    [
+      1,
+      0
+    ],
+    [
+      2,
+      4
+    ],
+    [
+      4,
+      3
+    ]
+  ],
+  "projection_witness": {
+    "xor_differences": [
+      33,
+      35,
+      39,
+      47,
+      63
+    ],
+    "mod31_equal": true
+  },
+  "truncated_NH_w2": {
+    "zero_count": 8,
+    "max_count": 8,
+    "total": 16
+  },
+  "truncated_NH_w3": {
+    "zero_count": 16,
+    "max_count": 16,
+    "total": 64
+  },
+  "truncated_NH_w4": {
+    "zero_count": 32,
+    "max_count": 32,
+    "total": 256
+  },
+  "odd_multiply_shift": {
+    "w": 4,
+    "r": 2,
+    "x": 1,
+    "y": 3,
+    "collision_keys": [
+      1,
+      7,
+      9,
+      15
+    ]
+  },
+  "recurrence_2_4": {
+    "distinct": 256,
+    "messages": 256
+  },
+  "recurrence_3_3": {
+    "distinct": 729,
+    "messages": 729
+  },
+  "UHASH": {
+    "EU": "461177610141505159171/633825300114114700748351602688",
+    "bits": 30.35611562942334
+  },
+  "VHASH": {
+    "bits_repaired": 61.67807190511264
+  },
+  "Halftime_score_leaf": 99.0703893278914,
+  "intended_Encode3": {
+    "matrices_as_columns": [
+      [
+        1,
+        2,
+        4
+      ],
+      [
+        4,
+        5,
+        2
+      ],
+      [
+        5,
+        7,
+        6
+      ],
+      [
+        2,
+        6,
+        5
+      ],
+      [
+        3,
+        4,
+        1
+      ],
+      [
+        6,
+        3,
+        7
+      ],
+      [
+        7,
+        1,
+        3
+      ]
+    ],
+    "ranks": [
+      3,
+      3,
+      3,
+      3,
+      3,
+      3,
+      3,
+      3,
+      3,
+      3,
+      3,
+      3,
+      3,
+      3,
+      3,
+      3,
+      3,
+      3,
+      3,
+      3,
+      3,
+      3,
+      3,
+      3,
+      3,
+      3,
+      3,
+      3
+    ]
+  },
+  "UHASH_improved": {
+    "1": {
+      "bound": "1980742752891598933302890725373/2722258935367507707706996859454145691648",
+      "bits": 30.356115629651757
+    },
+    "2": {
+      "bound": "401734511487145808496902154933246853564410776680654918647799/1725436586697640946858688965569256363112777243042596638790631055949824",
+      "bits": 31.999999998483098
+    },
+    "3": {
+      "bound": "254629497041810760916021343936764707791305862742179025977090093239656112595057794051211237/1093625362391505962186251113558810682676584715446606218212885303204976499599687961611756588511526912",
+      "bits": 32.0
+    },
+    "4": {
+      "bound": "161390617380431786853494948291729949118446207229048934361338920561758902562210405699226809534021440193186673945017843631/693167423530203714894603546035770925859109268843954143792619895153655326951406405759993601526034894524347802740350892957243539456",
+      "bits": 32.0
+    }
+  },
+  "irreducible_GF64": {
+    "frobenius_equal": true,
+    "gcd_values": [
+      1
+    ]
+  },
+  "irreducible_GF127": {
+    "frobenius_equal": true,
+    "gcd_values": [
+      1
+    ]
+  },
+  "lucas_lehmer_61": 0,
+  "lucas_lehmer_89": 0,
+  "lucas_lehmer_127": 0,
+  "chain5_GF4": {
+    "vectors": 1024,
+    "distinct_images": 1024,
+    "decoder_correct": true
+  },
+  "halftime_width2": {
+    "max_full_kernel": 4,
+    "max_single_kernel_sum": 5
+  },
+  "pairwise_independence_False": {
+    "all_output_pairs_count_32_of_512": true
+  },
+  "pairwise_independence_True": {
+    "all_output_pairs_count_32_of_512": true
+  }
+}

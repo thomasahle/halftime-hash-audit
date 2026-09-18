@@ -1,0 +1,911 @@
+                                             HalftimeHash: Modern Hashing without 64-bit
+                                                      Multipliers or Finite Fields
+
+                                                                   Jim Apple[0000−0002−8685−9451]
+
+                                                                         jbapple@apache.org
+arXiv:2104.08865v2 [cs.DS] 21 Apr 2021
+
+
+
+
+                                               Abstract. HalftimeHash is a new algorithm for hashing long strings.
+                                               The goals are few collisions (different inputs that produce identical output
+                                               hash values) and high performance.
+                                               Compared to the fastest universal hash functions on long strings (clhash
+                                               and UMASH) HalftimeHash decreases collision probability while also
+                                               increasing performance by over 50%, exceeding 16 bytes per cycle.
+                                               In addition, HalftimeHash does not use any widening 64-bit multiplica-
+                                               tions or any finite field arithmetic that could limit its portability.
+
+                                                Keywords: Universal hashing · Randomized algorithms
+
+
+                                         1    Introduction
+
+                                         A hash family is a map from a set of seeds S and a domain D to a codomain C.
+                                         A hash family H is called is ε-almost universal (“ε-AU” or just “AU”) when
+
+                                                    ∀x, y ∈ D, x 6= y =⇒ Prs∈S [H(s, x) = H(s, y)] ≤ ε ∈ o(1)
+
+                                         The intuition behind this definition is that collisions can be made unlikely by
+                                         picking randomly from a hash family independent of the input strings, rather
+                                         than anchoring on a specific hash function such as MD5 that does not take a
+                                         seed as an input. AU hash families are useful in hash tables, where collisions slow
+                                         down operations and, in extreme cases, can turn linear algorithms into quadratic
+                                         ones. [26,19,2,11]
+                                             HalftimeHash is a new “universe collapsing” hash family, designed to hash
+                                         long strings into short ones. [1,12,22] This differs from short-input families like
+                                         SipHash or tabulation hashing, which are suitable for hashing short strings to a
+                                         codomain of 64 bits. [3,26] Universe collapsing families are especially useful for
+                                         composition with short-input families: when n long strings are to be handled by
+                                         a hash-based algorithm, a universe-collapsing family that reduces them to hash
+                                         values of length c lg n bits for some suitable c > 2 produces zero collisions with
+                                         probability 1 − O(n2−c ). A short-input hash family can then treat the hashed
+                                         values as if they were the original input values. [25,3,26,10] This technique applies
+                                         not only to hash tables, but also to message-authentication codes, load balancing
+                                         in distributed systems, privacy amplification, randomized geometric algorithms,
+                                         Bloom filters, and randomness extractors. [4,24,23,13,10,14]
+    On strings longer than 1KB, HalftimeHash is typically 55% faster than clhash,
+the AU hash family that comes closest in performance.
+    HalftimeHash also has tunable output length and low probabilities of collision
+for applications that require them, such as one-time authentication.[5] The
+codomain has size 16, 24, 32, or 40 bytes, and ε varies depending on the codomain
+(see Figure 2 and Section 6).
+
+
+1.1    Portability
+
+In addition to high speed on long strings, HalftimeHash is designed for a simple
+implementation that is easily portable between programming languages and
+machine ISA’s. HalftimeHash uses less than 1200 lines of code in C++ and can
+take advantage of vector ISA extensions, including AVX-512, AVX2, SSE, and
+NEON.1
+    Additionally, no multiplications from Z264 × Z264 to Z2128 are needed. This
+is in support of two portability goals – the first is portability to platforms or
+programming languages without native widening unsigned 64-bit multiplications.
+Languages like Java, Python, and Swift can do these long multiplications, but
+not without calling out to C or slipping into arbitrary-precision-integer code. The
+other reason HalftimeHash avoids 64-bit multiplications is portability to SIMD
+ISA extensions, which generally do not contain widening 64-bit multiplication.
+
+
+1.2    Prior almost-universal families
+
+There are a number of fast hash algorithms that run at rates exceeding 8 bytes
+per cycle on modern x86-64 processors, including Fast Positive Hash, falkhash,
+xxh, MeowHash, and UMASH, and clhash. [27] Of these, only clhash and U-
+MASH include claims of being AU; each of these uses finite fields and the x86-64
+instruction for carryless (polynomial) multiplication.
+    Rather than tree hashing, hash families like clhash and UMASH use polyno-
+mial hashing (based on Horner’s method) to hash variable-length strings down to
+fixed-size output. That approach requires 64-bit multiplication and also reduction
+modulo a prime (in Z or in Z2 [x]), limiting its usability in SIMD ISA extensions.
+
+
+1.3    Outline
+
+The rest of this paper is organized as follows: Section 3 covers prior work
+that HalftimeHash builds upon. Section 4 introduces a new generalization of
+Nandi’s “Encode, Hash, Combine” algorithm.[21] Section 5 discusses specific
+implementation choices in HalftimeHash to increase performance. Section 6
+analyzes and tests HalftimeHash’s performance.
+1
+    https://github.com/jbapple/HalftimeHash
+2    Notations and Conventions
+
+Input string length n is measured in 32-bit words. “32-bit multiplication” means
+multiplying two unsigned 32-bit words and producing a single 64-bit word. “64-bit
+multiplication” similarly refers to the operation producing a 128-bit product. All
+machine integers are unsigned.
+    Sequences are denoted by angled brackets: “h”, “i”, and / prepends a char-
+acter onto a string. Subscripts indicate a numbered component of a sequence,
+starting at 0. Contiguous half-open subsequences are denoted ”x[y, z)”, meaning
+hxy , xy+1 , . . . , xz−1 i.
+    ⊥ is a new symbol not otherwise in the alphabet of words
+    ε is called the collision probability of H; it is inversely related to H’s output
+entropy, − lg ε. The seed is sometimes referred as input entropy, which is distin-
+guished from the output entropy both because it is an explicit part of the input
+and because it is measured in words or bytes, not bits.
+    Each step of HalftimeHash applies various transforms to groups of input
+values. These groups are called instances. The processing of a transform on a
+single instance is called an execution.
+    Instances are logically contiguous but physically strided, for the purpose of
+simplifying SIMD processing. A physically contiguous set between two items in
+a single instance is called a block; the number of words in a block is called the
+block size. Because instances are logically contiguous, when possible, the analysis
+will elide references to the block size.
+    Tree hashing examples use a hash family parameter H that takes two words
+as input, but this can be easily extended to hash functions taking more than
+two words of input, in much the same way that binary trees are a special case of
+B-trees.
+    HalftimeHash produces output that is collision resistant among strings of the
+same length. Adding collision resistance between strings of different lengths to
+such a hash family requires only appending the length at the end of the output.
+    Variants will be specified by their number of output bytes: HalftimeHash16,
+HalftimeHash24, HalftimeHash32, or HalftimeHash40.
+    Except where otherwise mentioned, all benchmarks were run on an Intel
+i7-7800x (a Skylake chip that supports AVX512), running Ubuntu 18.04, with
+clang++ 11.0.1.
+
+
+3    Prior work
+
+This section reviews hashing constructions that form components of HalftimeHash.
+In order to put these in context, a broad outline of HalftimeHash is in order.
+    HalftimeHash can be thought of as a tree-based, recursively-defined hash
+function. The leaves of the tree are the words of the unhashed input; the root is
+the output value. Every internal node has multiple inputs and a single output,
+corresponding with the child and parent nodes in the tree.
+    To a first approximation, a string is hashed by breaking it up into some
+number of contiguous parts, hashing each part, then combining those hash values.
+When the size of the input is low enough, rather than recurse, a construction
+called “Encode, Hash, Combine” (or “EHC”) is used to hash the input.
+
+
+3.1    Tree hash
+
+HalftimeHash’s structure is based on a tree-like hash as described by Carter and
+Wegman. [9, Section 3] To hash a string, we use dlg ne randomly-selected keys ki
+and a hash family H that hashes two words down to one. Then the tree hash T
+of a string s[0, n) is defined recursively as:
+
+      T (k, hxi) def
+                  = x
+                                                  dlg n−1e                                (1)
+      T (k, s[0, n)) def
+                      = H(kdlg n−1e , T (k, s[0, 2         )), T (k, s[2dlg n−1e , n)))
+
+   Carter and Wegman show that if H is ε-AU, T is mε-AU for input that has
+length exactly 2m . Later, Boesgaard et al. extended this proof to strings with
+lengths that are not a power of two.[7]
+
+
+3.2    NH
+
+In HalftimeHash, NH, an almost-universal hash family, is used at the nodes of
+tree hash to hash small, fixed-length sequences:[6]
+                                m
+                                X
+                                  (d2i + s2i )(d2i+1 + s2i+1 )
+                                i=0
+
+
+where d, s ∈ Z2m+2
+               232  are the input string and the input entropy, respectively. The
+dj + sj additions are in the ring Z232 , while all other operations are in the ring
+Z264 . NH is 2−32 -AU. In fact, it satisfies a stronger property, 2−32 -A∆U:[6]
+
+Definition 1. A hash family H is said to be ε-almost ∆-universal (or just A∆U)
+when
+                ∀x, y, δ, Pr[H(s, x) − H(s, y) = δ] ≤ ε ∈ o(1)
+                                 s
+
+
+   In tree nodes (though not in EHC, covered below), a variant of NH is used in
+which the last input pair is not hashed, thereby increasing performance:
+
+                   m−1
+                                                      !
+                   X
+                          (d2i + s2i )(d2i+1 + s2i+1 )    + d2m + 232 d2m+1
+                    i=0
+
+
+This hash family is still 2−32 -AU.[7]
+3.3   Encode, Hash, Combine
+At the leaves of the tree hash, HalftimeHash uses the “Encode, Hash, Combine”
+algorithm.[21] EHC is parameterized by an erasure code with “minimum distance”
+k, which is a map on sequences of words such that any two input values that differ
+in any location produce encoded outputs that differ in at least k > 1 locations
+after encoding.
+    The EHC algorithm is:
+ 1. A sequence of words is processed by an erasure code with minimum distance
+    k, producing a longer encoded sequence.
+ 2. Each word in the encoded sequence is hashed using an A∆U family with
+    independently and randomly chosen input entropy.
+ 3. A linear transformation T is applied to the resulting sequence of hash values.
+    The codomain of T has dimension k, and T must have the property that any
+    k columns of it are linearly independent.
+   Nandi proved that if the EHC matrix product is over a finite field, EHC is εk -
+AU. This AU collision probability could be achieved on the same input by instead
+running k copies of NH, but that would perform mk multiplications to hash m
+words, while EHC requires m + k multiplications, excluding the multiplications
+implicit in applying T . That exclusion is the topic of Section 4.
+
+
+4     Generalized EHC
+At first glance, EHC might not look like it will reduce the number of multi-
+plications needed, as the application of linear transformations usually requires
+multiplication. However, since T is not part of the randomness of the hash family,
+it can be designed to contain only values that are trivial to multiply by, such as
+powers of 2.
+    The constraint in [21] requires that any k columns of T form an invertible
+matrix. This is not feasible in linear transformations on Z264 in most useful
+dimensions. For instance, in HalftimeHash24, a 3 × 9 matrix T is used. Any such
+matrix will have at least one set of three columns with an even determinant, and
+which therefore has a non-trivial kernel.
+Proof. Let U be a matrix over Z2 formed by reducing each entry of T modulo
+2. Then (det T ) mod 2 ≡ det U . Since there are only 7 unique non-zero columns
+of size 3 over Z2 , by the pigeonhole principle, some two columns x, y of U must
+be equal. Any set of columns that includes both x and y has a determinant of
+0 mod 2.                                                                      t
+                                                                              u
+    Let k be the minimum distance of the erasure code. While Nandi proved that
+EHC is εk -AU over a finite field, Z264 is not a finite field. However, there are
+similarities to a finite field, in that there are some elements in Z264 with inverses.
+Some other elements in Z264 are zero divisors, but only have one value that they
+can be multiplied by to produce 0. A variant of Nandi’s proof is presented here
+as a warm-up to explain the similarities. [21]
+Lemma 1. When the matrix product is taken over a field, if the hash function
+H used in step 2 is ε-A∆U, EHC is εk -A∆U.
+
+Proof. Let H̄ be defined as H̄(s, x)i def
+                                       = H(si , xi ). Let J be the encoding function
+that acts on x and y, producing an encoding of length e. Given that x and y
+differ, let F be k locations where J(x)i 6= J(y)i . Let T |F be the matrix formed
+by the columns of T where the column index is in F and let H̄|F similarly be H̄
+restricted to the indices in F . Conditioning over the e − k indices not in F , we
+want to bound
+
+                     Pr[T |F H̄|F (s, J(x)) − T |F H̄|F (s, J(y)) = δ]          (2)
+                     s
+
+Since any k columns of T are independent, T |F is non-singular, and the equation
+                                                       −1
+is equivalent to H̄|F (s, J(x)) − H̄|F (s, J(y)) = T |F δ, which implies
+                         ^
+                               H(si , J(x)i ) − H(si , J(y)i ) = βi
+                         i∈F
+
+                −1
+          = T |F
+where β def        δ.
+    Since the si are all chosen independently, the probability of the conjunction
+is the product of the probabilities, showing
+
+                     Prs [T |F H̄|F (s, J(x)) − T |F H̄|F (s, J(y)) = δ]
+                     Q
+                 ≤     i∈F P rs [H(si , J(x)i ) − H(si , J(y)i ) = βi ]
+
+
+and since H is A∆U, this probability is εk .                                      t
+                                                                                  u
+
+    Note that this lemma depends on k being the minimum distance of the code.
+If the distance were less than k, then the matrix would be smaller, increasing
+the probability of collisions.
+    In the non-field ring Z264 , the situation is altered. “Good” matrices are those
+in which the determinant of any k columns is divisible only by a small power
+of two. The intuition is that, since matrices in Z264 with odd determinants are
+invertible, the “closer” a determinant is to odd (meaning it is not divisible by
+large powers of two), the “closer” it is to invertible.
+
+Theorem 1. Let p be the largest power of 2 that divides the determinant of any
+k columns in T . The EHC step of HalftimeHash is 2k(p−32) -A∆U when using
+NH as the hash family.
+
+Proof. In HalftimeHash, the proof of the lemma above unravels at the reliance
+upon the trivial kernel of T |F . The columns of T in HalftimeHash are linearly
+independent, so the matrix T |F is injective in rings without zero dividers, but
+not necessarily injective in Z264 .
+    However, even in Z264 , the adjugate matrix adj(A) has the property that
+                                                          0
+A · adj(A) = adj(A) · A = det(A)I. Let det(T |F ) = q2p , where q is odd and
+p0 ≤ p. Now (2) reduces to
+
+         Prs [T |F H̄|F (s, x) − T |F H̄|F (s, y) = δ]
+       ≤ Prs [adj(T |F )T |F H̄|F (s, x) − adj(T |F )T |F H̄|F (s, y) = adj(T |F )δ]
+                   0                 0
+       = Prs [q2p H̄|F (s, x) − q2p H̄|F (s, y) = adj(T |F )δ]
+                 0                0
+       = Prs [2p H̄|F (s, x) − 2p H̄|F (s, y) = q −1 adj(T |F )δ]
+
+   Now letting β = q −1 adj(T |F )δ and letting the modulo operator extend
+pointwise to vectors, we have
+                                                                    0
+               = Prs [hH̄|F (s, x) − H̄|F (s, y) ≡ β mod 264−p ]            i
+                                                                      64−p0
+                        V
+               = Prs      i∈F  H(s i , xi )  − H(si , yi ) ≡ β i mod 2
+                              h                                            0
+                                                                             i
+               = i∈F Prs H(si , xi ) − H(si , yi ) ≡ βi mod 264−p
+                 Q
+                  0        |F |           0
+               = 2p 2−32          = 2k(p −32)
+
+This quantity is highest when p0 is at its maximum over all potential sets of
+columns F , and p0 is at most p, by the definition of p.                   t
+                                                                           u
+
+   This generalized version of EHC is used in the implementation of HalftimeHash
+described in Section 5, with p ≤ 23 .
+
+
+5     Implementation
+
+This section describes the specific implementation choices made in HalftimeHash
+to ensure high output entropy and high performance. The algorithm performs
+the following steps:
+
+ – Generalized EHC on instances of the unhashed input, producing 2, 3, 4, or 5
+   output words (of 64 bits each) per input instance
+ – 2, 3, 4, or 5 exexutions of tree hash (with independently and randomly
+   chosen input entropy) on the output of EHC, with NH at each internal node,
+   producing a sequence of words logarithmic in the length of the input string,
+   as described below in Equation 3
+ – NH on the output of each tree hash, producing 16, 24, 32, or 40 bytes
+
+
+5.1   EHC
+
+In addition to the trivial distance-2 erasure code of XOR’ing the words together
+and appending that as an additional word, HalftimeHash uses non-linear erasure
+codes discovered by Gabrielyan with minimum distance 3, 4, or 5. [17,15,16]
+    For the linear transformations, HalftimeHash uses matrices T selected so that
+the largest power of 2 that divides any determinant is 22 or 23 . For instance, for
+the HalftimeHash24 variant, T has a p of 22 :
+                                                         
+                                         001411221
+                                        1 1 0 0 1 4 1 2 2
+                                         141100212
+      For other output widths, HalftimeHash uses
+
+               HalftimeHash16             HalftimeHash32
+                                                    HalftimeHash40
+                                                     100001124
+                             0 0 0 1 1 4 2 4 1 1 0 1 0 0 0 1 2 1 7
+                1011214      0 1 2 0 0 1 1 2 4 1 0 0 1 0 0 1 3 8 5
+                                                                    
+            T
+                0 1 1 2 1 4 1 2 0 1 0 4 0 1 1 1 1                  
+                                                    0 0 0 1 0 1 4 9 8
+                               1101004128
+                                                      000011539
+            p        22                23                   23
+    The input group lengths for the EHC input are 6, 7, 7, and 5, as can be seen
+from the dimensions of the matrices: columns + 1 − rows. Note that each of these
+matrices contains coefficients that can be multiplied by with no more than two
+shifts and one addition.
+
+5.2     Tree hash
+For the tree hashing at internal nodes (above the leaf nodes, which use EHC),
+k ∈ {2, 3, 4, 5} tree hashes are executed with independently-chosen input entropy,
+producing output entropy of −k lg ε. From the result from Carter and Wegman
+on the entropy of tree hash of a tree of height m, the resulting hash function is
+mεk -AU.
+   The key lemma they need is that almost universality is composable:
+Lemma 2 (Carter and Wegman). If F is εF -AU, G is εG -AU, then
+ – F ◦ G where F ◦ G(hkF , kG i, x) def
+                                      = F (kF , G(kG , x)) is (εF + εG )-AU.
+ – hF, Gi where hF, Gi(hkF , kG i, hx, yi) def
+                                           = hF (kF , x), G(kG , y)i, is max(εF , εG )-
+   AU, even if F = G and kF = kG .
+   The approach in Badger of using Equation 1 to handle words that are
+not in perfect trees can be increased in speed with the following method: For
+HalftimeHash, define Tb as a family taking as input sequences of any length n
+and producing sequences of length dlg ne as follows, using Carter and Wegman’s
+T defined in Section 3:
+
+
+      Tb0 (k, hi) def
+                   = h⊥i
+
+      Tb0 (k, hxi) def
+                    = hxi      (                                                                (3)
+                                                 ⊥ / Tbi (k[1, dlg ne), s[0, n)) if 2i > n
+      Tbi+1 (k, s[0, n)) def
+                          =
+                                   T (k, s[0, 2 ))) / Tbi (k[1, dlg ne), s[2i , n)) if 2i ≤ n
+                                               i
+
+
+   There is one execution of T for every 1 in the binary representation of n. By
+an induction on dlg ne using the composition lemma, Tb is εdlg ne-AU.
+    The output of Tb is then hashed using an NH instance of size dlg ne. This
+differs from Badger, where T is used to fully consume the input without the use of
+additional input entropy; T produces a single word per execution, while Tb needs
+to be paired with NH post-processing in order to achieve that.[7] Empirically, Tb
+has better performance than the Badger approach.
+
+
+6      Performance
+
+This section tests and analyzes HalftimeHash performance, including an analysis
+of the output entropy.
+
+
+6.1     Analysis
+
+The parameters used in this analysis are:
+
+b the number of 64-bit words in a block. Blocks are used to take advantage of
+    SIMD units.
+d is the number of elements in each EHC instance before applying the encoding.
+e is the number of blocks in EHC after applying the encoding.
+f is fanout, the width of the NH instance at tree hash nodes.
+k is the number of blocks produced by the Combine step of EHC. This is also
+    the minimum distance of the erasure code, as described above.
+p is the maximum power of 2 that divides a determinant of any k × k matrix
+    made from columns of the matrix T ; doubling p increases ε by a factor of 2k .
+w is the number of blocks in each item used in the Encode step of EHC.
+
+      In HalftimeHash24,
+
+                      (w, d, e, k, b, f, p) = (3, 7, 9, 3, 8, 8, 22 )
+
+    Each EHC execution reads in dw blocks, produces e blocks, uses ew words of
+input entropy, and performs ew multiplications.
+    For the tree hash portion of HalftimeHash, the height of the k trees drives
+multiple metrics. Each tree has bn/bdwc blocks as input and every level exe-
+cution forms a complete
+                         f -ary execution tree. The height of the tree is thus
+h def
+   =   log f bn/bdwc  .
+
+Lemma 3. The tree hash is 2k lg h−32k -AU.
+
+Proof. Carter and Wegman showed that tree hash has collision probability of hε,
+where ε is the collision probability of a single node. Each tree node uses NH, so
+a single tree has collision probability h2−32 . A collision occurs for HalftimeHash
+at the tree hash stage if and only if all k trees collide, which has probability
+       k
+ h2−32 , assuming that the EHC step didn’t already induce a collision.            t
+                                                                                  u
+    The amount of input entropy needed is proportional to the height of the
+tree, with f − 1 words needed for every level. HalftimeHash uses different input
+entropy for the k different trees, so the total number of 64-bit words of input
+entropy used in the tree hash step is (f − 1)hk.
+    The number of multiplications performed is identical to the number of input
+words, kbbn/bdwc.
+    The result of the tree hash is processed through NH, which uses bf hk words
+of entropy and just as many multiplications.
+    There can also be as much as bdw words of data in the raw input that are
+not read by HalftimeHash, as they are less than the input size of one instance of
+EHC. Again, NH is used on this data, but now hashing k times, since this data
+has not gone through EHC. That requires bdwk words of entropy and just as
+many multiplications.
+    For this previously-unread data, the number of words of entropy needed can
+be reduced by nearly a factor of k using the Toeplitz construction. Let r be the
+sequence of random words used to hash it. Instead of using r[ibdw, (i + 1)bdw)
+as the keys to hash component i with, HalftimeHash uses r[i, bdw + i). This
+construction for multi-part hash output is A∆U. [21,28]
+
+6.2    Cumulative analysis
+The combined collision probability is 2−32k 2kp + hk + 1 . For HalftimeHash24,
+                                                            
+
+and for strings less than an exabyte in length, this is more than 83 bits of entropy.
+    The combined input entropy needed (in words) is ew + (f − 1)hk + bf hk +
+bdw + k − 1 HalftimeHash24 requires 8.4KB input entropy for strings of length
+up to one megabyte and 34KB entropy for strings of length up to one exabyte.
+    The number of multiplications is dominated by the EHC step, since the total
+is (ew + k)bbn/bdwc + O(log n) and ew is significantly larger than k. For a string
+of length 1MB, 84% of the multiplications happen in the EHC step. Intel’s VTune
+tool show the same thing: 86% of the clock cycles are spent in the EHC step.
+Similarly, clhash and UMASH, which are based on 64-bit carryless NH, have
+their execution times dominated by the multiplications in their base step. [20,18]
+
+6.3    Benchmarks
+HalftimeHash passes all correctness and randomness tests in the SMHasher test
+suite; for a performance comparison, see Figure 1 and [27].
+    Figure 2 displays the relationship between output entropy and throughput
+for HalftimeHash, UMASH, and clhash.2 Adding more output entropy increases
+the number of non-linear arithmetic operations that any hash function has to
+perform.[21] The avoidance of doubling the number of multiplications for twice
+the output size is one of the primary reasons that HalftimeHash24, -32, and -40
+are faster than running clhash or UMASH with 128-bit output. (The other is
+that carryless multiplication is not supported as a SIMD instruction.)
+2
+    UMASH and clhash are the fastest AU families for string hashing
+                                                        SMhasher speed tests (higher is better)
+                        18
+                        16
+                        14
+ bytes per cycle
+
+
+
+                        12
+                        10
+                         8
+                         6
+                         4
+                         2
+                         0
+                                  clh
+
+                                             Ha
+
+                                                       Me
+
+                                                                   xx
+
+                                                                              xx
+
+                                                                                      Ha
+
+                                                                                                t1h
+
+                                                                                                           fal
+
+                                                                                                                      Ha
+
+                                                                                                                                Ha
+                                                                       h1
+
+                                                                                 h3
+
+
+
+
+                                                                                                            kh
+                                               lfti
+
+
+
+
+                                                                                        lfti
+
+
+
+
+                                                                                                                        lfti
+
+                                                                                                                                  lfti
+                                   ash
+
+
+
+
+                                                                                                   a0_
+                                                            ow
+
+
+                                                                       28
+
+
+
+
+                                                                                                                ash
+                                                me
+
+
+
+
+                                                                                         me
+
+
+
+
+                                                                                                                         me
+
+                                                                                                                                     me
+                                                             Ha
+
+
+
+
+                                                                                                     aes
+                                                   H
+
+
+
+
+                                                                                            H
+
+
+
+
+                                                                                                                            H
+
+                                                                                                                                        H
+                                                                 sh1
+
+
+
+
+                                                                                                      _av
+                                                      ash
+
+
+
+
+                                                                                               ash
+
+
+
+
+                                                                                                                               ash
+
+                                                                                                                                         ash
+                                                                  28
+
+
+
+
+                                                                                                           x2
+                                                       40
+
+
+
+
+                                                                                                32
+
+
+
+
+                                                                                                                                24
+
+                                                                                                                                            16
+Fig. 1. The two fastest variants of HalftimeHash are faster than all hash families in
+the SMHasher suite on 256KiB strings on an i7-7800x, even families that come with
+no AU guarantees. [27] Of the families here, only HalftimeHash and xxh128 pass all
+SMHasher tests, and only HalftimeHash and clhash are AU.
+
+
+
+
+                                                  Output entropy vs. B/ns (upper right is better)
+                        70
+                                             HalftimeHash16
+                        60                                              HalftimeHash24
+ bytes per nanosecond
+
+
+
+
+                        50                                                                HalftimeHash32
+
+                        40              UMASH_64                                                                  HalftimeHash40
+
+                        30                                   clhash
+
+                                                                                 UMASH_128
+                        20
+                                                                                                           clhash (twice)
+                        10
+                             20
+
+
+
+                                        40
+
+
+
+                                                        60
+
+
+
+                                                                            80
+
+
+
+                                                                                        10
+
+
+
+                                                                                                         12
+
+
+
+                                                                                                                         14
+
+
+
+                                                                                                                                            16
+                                                                                           0
+
+
+
+                                                                                                            0
+
+
+
+                                                                                                                            0
+
+
+
+                                                                                                                                               0
+
+
+
+
+                                                                            output entropy
+
+Fig. 2. Trade-offs for almost-universal string hashing functions on strings of size 250KB
+on an i7-7800x. UMASH comes in two variants based on the output width in bits;
+clhash doesn’t, but running clhash twice is included in the chart. For each clhash /
+UMASH version, at least one version of HalftimeHash is faster and has lower collision
+probability. [8]
+    Figure 3 adds comparisons between clhash, UMASH, and HalftimeHash across
+input sizes and processor manufacturers. Although these two machines support
+different ISA vector extensions, the pattern is similar: for large enough input,
+HalftimeHash’s throughput exceeds that of the carryless multiplication families.
+
+
+                              i7-7800x speed (higher is better)               7R32 speed (higher is better)
+                        90                                          90
+                                   HalftimeHash24                               HalftimeHash24v3
+                        80                  clhash                  80                     clhash
+                        70                  umash                   70                     umash
+ bytes per nanosecond
+
+
+
+
+                        60                                          60
+                        50                                          50
+                        40                                          40
+                        30                                          30
+                        20                                          20
+                        10                                          10
+                         0                                           0
+                             10
+
+                                  10
+
+                                        10
+
+                                              10
+
+                                                   10
+
+                                                         10
+
+                                                               10
+
+
+
+
+                                                                         10
+
+                                                                              10
+
+                                                                                    10
+
+                                                                                           10
+
+                                                                                                10
+
+                                                                                                      10
+
+                                                                                                            10
+                              0
+
+                                   1
+
+                                          2
+
+                                               3
+
+                                                     4
+
+                                                          5
+
+                                                                6
+
+
+
+
+                                                                          0
+
+                                                                                1
+
+                                                                                       2
+
+                                                                                            3
+
+                                                                                                  4
+
+                                                                                                       5
+
+                                                                                                             6
+                                       input length in bytes                        input length in bytes
+
+ Fig. 3. Comparison of Intel (i7-7800x) and AMD (EC2 c5a.large, 7R32) performance.
+ On both chips HalftimeHash24 is faster than clhash and UMASH for long strings. The
+“v3” after the name of the AMD HalftimeHash indicates block size: v3 means a 256-bit
+ block size, while v4 (the default) means 512-bit block size. AMD chips do not support
+AVX-512, but still HalftimeHash with 256-bit blocks exceeds the speed of clmul-based
+ hashing methods by up to a factor of 2.
+
+
+
+
+7                       Future work
+Areas of future research include:
+
+  – Combining HalftimeHash, which is designed for long input, with a fast family
+    for short input
+  – Tuning for JavaScript, which has no native 32-bit integer support
+  – Comparisons against hash algorithms in the Linux kernel, including Poly1305
+    and crc32 pclmul le 16
+  – Benchmarks on POWER and ARM ISA’s
+  – EHC benchmarks using 64-bit multiplication – carryless or integral
+
+
+Acknowledgments
+Thanks to Daniel Lemire, Paul Khuong, and Guy Even for helpful discussions
+and feedback.
+References
+ 1. Alon, N., Dietzfelbinger, M., Miltersen, P.B., Petrank, E., Tardos, G.: Lin-
+    ear hash functions. J. ACM 46(5), 667–683 (Sep 1999), https://doi.org/
+    10.1145/324133.324179, http://www.math.tau.ac.il/~nogaa/PDFS/linhash13.
+    pdf https://tidsskrift.dk/brics/article/view/1880
+ 2. Apple, J.: Ensure monotonic count(distinct x) performance (2015), https://issues.
+    apache.org/jira/browse/IMPALA-2653, accessed on 2020-12-32
+ 3. Aumasson, J.P., Bernstein, D.J.: SipHash: a fast short-input PRF. In: International
+    Conference on Cryptology in India. pp. 489–508. Springer (2012)
+ 4. Bernstein, D.J.: The Poly1305-AES message-authentication code. In: International
+    Workshop on Fast Software Encryption. pp. 32–49. Springer (2005)
+ 5. Bernstein, D.J.: Cryptography in NaCl. Networking and Cryptography library 3,
+    385 (2009)
+ 6. Black, J., Halevi, S., Krawczyk, H., Krovetz, T., Rogaway, P.: UMAC: Fast and
+    secure message authentication. In: Annual International Cryptology Conference. pp.
+    216–233. Springer (1999), https://link.springer.com/chapter/10.1007/3-540-
+    48405-1_14, https://web.cs.ucdavis.edu/~rogaway/papers/umac-full.pdf
+ 7. Boesgaard, M., Scavenius, O., Pedersen, T., Christensen, T., Zenner, E.: Badger
+    - a fast and provably secure MAC. Cryptology ePrint Archive, Report 2004/319
+    (2004), https://eprint.iacr.org/2004/319
+ 8. Buchsbaum, A.L., Goodrich, M.T.: Three-dimensional layers of maxima. In: Euro-
+    pean Symposium on Algorithms. pp. 257–269. Springer (2002)
+ 9. Carter, J.L., Wegman, M.N.: Universal classes of hash functions. Journal of Com-
+    puter and System Sciences 18(2), 143 – 154 (1979), http://www.sciencedirect.
+    com/science/article/pii/0022000079900448
+10. Chung, K.M., Mitzenmacher, M., Vadhan, S.: Why simple hash functions work:
+    Exploiting the entropy in a data stream. Theory of Computing 9(30), 897–945 (2013).
+    https://doi.org/10.4086/toc.2013.v009a030, http://www.theoryofcomputing.org/
+    articles/v009a030
+11. Crosby, S.A., Wallach, D.S.: Denial of service via algorithmic complexity attacks.
+    In: Proceedings of the 12th USENIX Security Symposium. pp. 29–44 (2003)
+12. Dietzfelbinger, M.: Universal Hashing via Integer Arithmetic Without Primes,
+    Revisited, pp. 257–279. Springer International Publishing (2018)
+13. Dietzfelbinger, M., Hagerup, T., Katajainen, J., Penttonen, M.: A reliable random-
+    ized algorithm for the closest-pair problem. Journal of Algorithms 25(1), 19–51
+    (1997)
+14. Dodis, Y., Ostrovsky, R., Reyzin, L., Smith, A.: Fuzzy extractors: How to generate
+    strong keys from biometrics and other noisy data. SIAM Journal on Computing
+    38(1), 97–139 (Jan 2008). https://doi.org/10.1137/060651380, http://dx.doi.org/
+    10.1137/060651380
+15. Gabrielyan, E.: Erasure resilient (10,7) code (2005), https://docs.switzernet.
+    com/people/emin-gabrielyan/051102-erasure-10-7-resilient/,                accessed:
+    2020-11-26
+16. Gabrielyan, E.: Erasure resilient MDS code with four redundant pack-
+    ets (2005), https://docs.switzernet.com/people/emin-gabrielyan/051103-
+    erasure-9-5-resilient/, accessed: 2020-11-26
+17. Gabrielyan, E.: Erausre resulient (9,7)-code (2005), https://docs.switzernet.
+    com/people/emin-gabrielyan/051101-erasure-9-7-resilient/, accessed: 2020-
+    11-26
+18. Khuong, P.: UMASH: a fast and universal enough hash (2020),
+    https://engineering.backtrace.io/2020-08-24-umash-fast-enough-almost-
+    universal-fingerprinting/
+19. Landau, J.: Exposure of HashMap iteration order allows for O(n2 ) blowup (2016),
+    https://github.com/rust-lang/rust/issues/36481, accessed on 2020-12-32
+20. Lemire, D., Kaser, O.: Faster 64-bit universal hashing using carry-less multiplications.
+    Journal of Cryptographic Engineering 6(3), 171–185 (2016)
+21. Nandi, M.: On the minimum number of multiplications necessary for universal hash
+    functions. In: Cid, C., Rechberger, C. (eds.) Fast Software Encryption. pp. 489–508.
+    Springer Berlin Heidelberg, Berlin, Heidelberg (2015)
+22. Pagh, R., Rodler, F.F.: Cuckoo hashing. Journal of Algorithms 51(2),
+    122 – 144 (2004), http://www.sciencedirect.com/science/article/pii/
+    S0196677403001925,             https://www.itu.dk/people/pagh/papers/cuckoo-
+    jour.pdf
+23. Renner, R., König, R.: Universally composable privacy amplification against quan-
+    tum adversaries. In: Theory of Cryptography Conference. pp. 407–425. Springer
+    (2005)
+24. Stoica, I., Morris, R., Karger, D., Kaashoek, M.F., Balakrishnan, H.: Chord: A
+    scalable peer-to-peer lookup service for internet applications. ACM SIGCOMM
+    Computer Communication Review 31(4), 149–160 (2001)
+25. Thorup, M.: String Hashing for Linear Probing, pp. 655–664 (2009).
+    https://doi.org/10.1137/1.9781611973068.72, https://epubs.siam.org/doi/abs/
+    10.1137/1.9781611973068.72
+26. Thorup, M.: Fast and powerful hashing using tabulation. CoRR abs/1505.01523
+    (2017), http://arxiv.org/abs/1505.01523
+27. Urban, R., et al.: Smhasher (2020), https://github.com/rurban/smhasher
+28. Woelfel, P.: Efficient strongly universal and optimally universal hashing. In:
+    Mathematical Foundations of Computer Science 1999, 24th International Sym-
+    posium. LNCS, vol. 1672, pp. 262–272 (1999), https://pages.cpsc.ucalgary.ca/
+    ~woelfel/paper/efficient_strongly/efficient_strongly.pdf
+

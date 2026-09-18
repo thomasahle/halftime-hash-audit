@@ -1,0 +1,7 @@
+Darwin Mac 27.0.0 Darwin Kernel Version 27.0.0: Tue Aug 11 21:20:40 PDT 2026; root:xnu-13432.1.9~1/RELEASE_ARM64_T6020 arm64
+Apple clang version 17.0.0 (clang-1700.6.4.2)
+Target: arm64-apple-darwin27.0.0
+Thread model: posix
+InstalledDir: /Library/Developer/CommandLineTools/usr/bin
+7ef5dd48f54537b430f85bc1867b23a93551ab1c56415cfcef362d1651956cc3  halftime-current.hpp
+3debc6124599a29b6df9839fe43214f67b2dbb057cd3f0a8033f6db5b1903c39  halftime-current.tex

@@ -1,0 +1,303 @@
+                                           VHASH Security
+
+                                           Wei Dai1 and Ted Krovetz2
+                                               1
+                                                   Bitvise Limited
+                                       2
+                                         Department of Computer Science
+                             California State University, Sacramento CA 95819 USA
+
+                                                August 28, 2007
+
+
+      Abstract. VHASH is an almost-delta-universal hash family, designed for exceptional performance on
+      computers that multiply 64-bit quantities efficiently. Changes to the algorithm detailed in this note
+      improve both security and performance over the original 2006 version. Speed is improved through a
+      newly analyzed hash construction which allows the use of lower-degree polynomials. Claimed security is
+      higher due primarily to improved analysis and a change in prime modulus. The result is a hash family
+      capable of hashing cache-resident one kilobyte messages on the Intel Core 2 architecture at a rate of
+      about one-half processor cycle per byte of message with a collision probability of less than 1/261 .
+
+
+            Keywords: Universal hashing, message authentication, Wegman-Carter, VHASH, VMAC.
+
+VMAC is a software-oriented Wegman-Carter message authentication algorithm (MAC) introduced in 2006 [3,
+6, 8]. At VMAC’s heart is the VHASH hash family, which was introduced at the same time. In 2007, VMAC
+and VHASH were codified into a formal specification, and during this process VHASH was improved with
+speed and security optimizations, making the finally specified algorithm different from the original in small
+but significant ways. This note points out where the newer algorithm differs from the older, and updates the
+appropriate proofs.
+Preliminaries. When s is a string, |s| is its length. The empty string is represented λ. When A is a finite
+set, |A| is the number of elements in the set. The set {0, 1, . . . , p − 1} is written as Zp . All random choices
+are made according to the uniform distribution.
+Universal hash families. A hash family H is a finite set of functions with each h ∈ H having common
+domain A and codomain B. The following define hash properties relevant to this note. The probabilities are
+over the choice of h ∈ H.
+ 1. H is ε-almost-universal (ε-AU) if Pr[h(m) = h(m′ )] ≤ ε for every m 6= m′ ∈ A.
+ 2. H is ε-almost-delta-universal (ε-ADU) if Pr[h(m) + x = h(m′ )] ≤ ε for every m 6= m′ ∈ A and x ∈ B.
+    (B must be a group with operator +.)
+Carter and Wegman introduced universal and strongly universal hashing and several applications [3, 8].
+Stinson defined almost-universal, and Krawczyk and Stinson later each introduced almost-delta-universal [5,
+7]. These definitions are relaxations of strongly universal and allow high speed implementations.
+
+
+1   Revised VHASH Algorithm
+As we developed optimized code for the original VHASH, a few changes were made to its specification.
+Initially, the changes focussed on speed, especially on short messages. These optimizations reduced security,
+and so subsequent modifications were introduced for both the analysis and the VHASH definition to restore
+the final collision probability to better than the original. Figure 1 gives the revised VHASH algorithm. The
+most significant changes to the VHASH algorithm are:
+ 1. The value p (Line 7) is now the result of a degree n polynomial rather than degree n + 1. This eliminates
+    one 128-bit multiplication and modular reduction for each message being hashed, and means very short
+    messages (those shorter than b bits) will require no multiplications or reductions during the polynomial
+    stage of hashing. Also, k is chosen from a slightly more restricted set, allowing a simpler implementation.
+                     VHASH[b](M, K, k, k1 , k2 )
+                     Inputs:
+                          M , a string of any length
+                          K, a string of length b bits, where b = 128i for some integer i > 1
+                          k, an element of {w296 + x264 + y232 + z | w, x, y, z ∈ Z229 }
+                          k1 , k2 , integers in the range 0 . . . 264 − 258, inclusive
+                     Output:
+                          h, an integer in the range 0 . . . 264 − 258, inclusive
+                     Algorithm:
+                     1.   n = max(⌈|M |/b⌉, 1)
+                     2.   Let M1 , M2 , . . . , Mn be strings so that M1 ||M2 || · · · ||Mn = M and
+                               |Mi | = b for 1 ≤ i < n.
+                     3.   ℓn = |Mn |
+                     4.   Let Mn = Mn ||0j where j ≥ 0 is the smallest integer so
+                               that |Mn | + j mod 128 = 0
+                     5.   Byte-reverse each 64-bit word in Mi for each 1 ≤ i ≤ n
+                     6.   ai = NH[b/64, 64](K, Mi ) mod 2126 for each 1 ≤ i ≤ n
+                     7.   p = kn + a1 kn−1 + a2 kn−2 + · · · + an k0 + ℓn 264 mod (2127 − 1)
+                     8.   p1 = p div (264 − 232 )
+                     9.   p2 = p mod (264 − 232 )
+                     10. h = (p1 + k1 ) × (p2 + k2 ) mod (264 − 257)
+
+
+Fig. 1. The hash family VHASH is (2−61 )-ADU for all messages upto 262 bits, when K, k, k1 , k2 are chosen randomly
+and b = 1024.
+
+
+
+ 2. The prime modulus used in the final hash stage (Line 10) is increased from 261 − 1 to 264 − 257. Although
+    slightly less convenient for divisionless modular reduction, the larger prime increases security. Also, the
+    hash computation changes from p1 k1 + p2 k2 in the original to (p1 + k1 ) × (p2 + k2 ), substituting one
+    addition for one multiplication.
+ 3. No longer is VHASH-128 defined separately from VHASH-64. A single application of VHASH gives
+    VHASH-64, while two applications of VHASH (with different keys) gives VHASH-128. Although this
+    change introduces a third stage of hashing (Lines 7–10) to VHASH-128 that was not in the original, the
+    increased work is offset by the polynomial degree reduction of Item 1.
+We now restate the main security theorem, reflecting these changes and improvements in analysis. For any
+b that is a positive multiple of 128, Figure 1 specifies the hash family VHASH[b] where choosing a random
+function h from the family is achieved by choosing K, k, k1 and k2 uniformly at random from their domains
+and letting h(·) = VHASH[b](·, K, k, k1 , k2 ).
+Theorem 1. Let b be any positive multiple of 128, ℓ be any positive multiple of b and p = 264 − 257,
+then VHASH[b] is ε-ADU (for addition modulo p) over all binary strings up to length ℓ bits where ε =
+1/262 + 1/(264 − 257) + (ℓ/b)2−115 .
+A corollary changing the co-domain of the hash family to the more convenient Z264 follows by combining
+this theorem with Lemma 4.
+Corollary 2. Let b be any positive multiple of 128 and ℓ be any positive multiple of b, then VHASH[b] is
+ε-ADU (for addition modulo 264 ) over all binary strings up to length ℓ bits where ε = 1/261 + 2/(264 − 257) +
+(ℓ/b)2−114 .
+The following section gives several hashing lemmas and shows how they fit into the proof of the theorem.
+
+1.1   Basic VHASH Components
+VHASH, in a three stage process, employs separate hash functions to do its work. The first stage of hashing
+uses NH to compress the message being hashed by a fixed ratio, reducing time spent in later, slower stages.
+A polynomial-evaluation hash then produces a fixed length output in the second stage. And finally, the
+third stage uses a strong hash to shorten and strengthen the VHASH product. We review these basic hash
+functions here.
+NH. The hash family NH was designed as a parameterized hash function [2]. Given positive integer param-
+eters n and w and a key K of length nw bits, then NH can hash any string M that is a multiple of 2w bits
+in length but not longer than nw bits. First M and K are broken into w-bit blocks M1 , M2 , . . . , Mℓ and
+K1 , K2 , . . . Kn where ℓ = |M |/w. Then, each block is interpreted as a w-bit unsigned integer m1 , m2 , . . . , mℓ
+and k1 , k2 , . . . kn . Finally, the hash result is computed as
+                                     ℓ/2
+                                     X
+               NH[n, w](K, M ) =           ((m2i−1 + k2i−1 mod 2w ) × (m2i + k2i mod 2w )) mod 22w .
+                                     i=1
+
+NH is a hash family, and choosing a random function h from the hash family is done by choosing a random
+nw-bit key K and letting h(·) = NH[n, w](K, ·). NH is known to be (2−w )-ADU (for addition modulo 22w )
+over messages of the same length (ie, M and M ′ are distinct, but |M | = |M ′ |), and small modifications to
+the original proof show that NH is (2−w )-ADU over messages that are any multiple of 2w bits in length (but
+still no longer than nw bits). In the context of VHASH, w = 64 and nw = b = 1024, making NH[16, 64] a
+(2−64 )-ADU hash family. In VHASH, however, we always follow applications of NH with a modular reduction
+by 2126 . Let us consider NH[n, w, r] = NH[n, w] mod r to be a hash family (again, functions are selected from
+the family via an nw bit string K). Corollary 5 tells us immediately that NH[16, 64, 2126 ] is (2−62 )-ADU.
+     We can extend NH to messages longer than nw through repeated use of NH. Let M be a message with
+length a multiple of 2w and let K be an nw-bit string. We hash M by breaking it into t = ⌈|M |/nw⌉ chunks
+M1 , M2 , . . . , Mt with |M1 | = |M2 | = · · · = |Mt−1 | = nw, and computing (in the case of NH[n, w, r])
+                                    ¡                                                                   ¢
+            NH∗ [n, w, r](K, M ) = NH[n, w, r](K, M1 ), NH[n, w, r](K, M2 ), . . . , NH[n, w, r](K, Mt ) .
+
+NH∗ is a hash family, and choosing a random function from the hash family is done by choosing a random
+nw-bit key K. If NH is an ε-AU hash function, then so is NH∗ .
+Polynomial. Another simple and efficient hash method results from polynomial evaluation. Given fixed
+prime p, message m = (m1 , . . . , mℓ ) and key 0 ≤ k < p, the hash of m is computed as
+
+                                 Poly(k, m) = m1 k ℓ + m2 k ℓ−1 + · · · + mℓ k 1 mod p .
+
+Two different messages m, m′ of the same length ℓ differ by constant d when hashed by this function if
+
+         Poly(k, m) − Poly(k, m′ ) = (m1 − m′1 )k ℓ + (m2 − m′2 )k ℓ−1 + · · · + (mℓ − m′ℓ )k 1 mod p = d .
+
+Because m 6= m′ , at least one of the coefficients in this polynomial is non-zero. This being a polynomial of
+degree at most ℓ, at most ℓ values for k cause Poly(k, m) − Poly(k, m′ ) − d (mod p) to be zero. Poly is a hash
+family, and choosing a random function h from the hash family is done by choosing a random 0 ≤ k < p and
+letting h(·) = Poly(k, ·). Poly is (ℓ/p)-ADU (for the operation of addition modulo p) over messages in Zℓp .
+    One can easily extend this polynomial hash to messages of different lengths. Let m be a vector in Zℓp and t
+be a number greater than the length of any message to be hashed. Message m can converted to an element of
+Ztp by prepending t − (ℓ + 1) zeroes and a 1. The resulting vector (0, 0, . . . , 0, 1, m1 , m2 , m3 , . . . , mℓ ) is hashed
+as above, resulting in k ℓ+1 + m1 k ℓ + m2 k ℓ−1 + · · · + mℓ k 1 mod p. This padding process is bijective, meaning
+that any messages differing before padding also differ afterward, and produces equal length messages to be
+hashed. The highest degree possible as a result of padding is t, and so the resulting polynomial hash family
+is (t/p)-ADU.
+NMH. Wegman and Carter invented a hash family that Halevi and Krawczyk named NMH∗ [4]. We do not
+need the general version of NMH∗ , which allows hashing long messages. We need only hash short fixed length
+messages. Let p be a prime, and k1 , k2 , m1 , m2 all be in Zp . Define
+
+                                  hk1 ,k2 (m1 , m2 ) = (m1 + k1 ) × (m2 + k2 ) mod p ,
+
+and define H = {hk1 ,k2 | k1 , k2 ∈ Zp }. Halevi and Krawczyk claim the following, but give no proof.
+Lemma 3. H is (1/p)-ADU (for addition modulo p).
+Proof. Let p be prime and d, m1 , m2 , m′1 , m′2 ∈ Zp with (m1 , m2 ) 6= (m′1 , m′2 ). To show H is (1/p)-ADU for
+addition modulo p, we need show that Prk1 ,k2 [hk1 ,k2 (m1 , m2 ) + d = hk1 ,k2 (m′1 , m′2 ) mod p] ≤ 1/p. Without
+loss of generality, assume m2 6= m′2 and fix k2 . Substituting the definition of h, our goal is achieved by
+evaluating Prk1 [(m1 +k1 )×(m2 +k2 )+d = (m′1 +k1 )×(m′2 +k2 ) mod p], which, multiplying and rearranging
+terms, is Prk1 [k1 (m2 − m′2 ) = m′1 m′2 + m′1 k2 − m1 m2 − m1 k2 − d mod p]. But c = m2 − m′2 is nonzero and
+d′ = m′1 m′2 + m′1 k2 − m1 m2 − m1 k2 − d is constant, so the probability simplifies to Prk1 [k1 c = d′ mod p],
+which is exactly 1/p.                                                                                           ⊓⊔
+
+1.2   Analysis
+Our next lemma gives a general result, describing what happens when an ε-ADU hash family, with the
+operation being addition modulo a, is considered instead for the operation of addition modulo b.
+Lemma 4. Let a and b be positive integers and H = {h : A → Za } be ε-ADU for addition modulo a. Define
+Hb = {h mod b | h ∈ H}. Then, Hb is (⌈ 2a−1
+                                         b ⌉ǫ)-ADU for addition modulo b.
+
+Proof: Let c be an element of Zb and m 6= m′ be elements of A. We need to show Prh [h(m) + c = h(m′ )
+(mod b)] ≤ ⌈ 2a−1                                                        ′                      ′
+                 b ⌉ǫ. To do so, we must evaluate Prh [h(m) + c = h(m ) (mod b)] = Prh [h(m ) − h(m) = c
+(mod b)] = Prh [h(m ) − h(m) = c + ib for some integer i]. The range of possible values for h(m′ ) − h(m)
+                         ′
+
+is {−(a − 1), . . . , (a − 1)}, meaning at most ⌈ 2a−1                                 ′
+                                                    b ⌉ values for i make possible h(m ) − h(m) = c + ib. For
+                            ′                                               ′
+every i, the event h(m ) − h(m) = c + ib is a subset of the event h(m ) − h(m) = c + ib (mod a), so
+Prh [h(m′ ) − h(m) = c + ib] ≤ Prh [h(m′ ) − h(m) = c + ib (mod a)] ≤ ǫ. Since there are at most ⌈ 2a−1   b ⌉
+values of i for which h(m′ ) − h(m) = c + ib, and the probability of each collision is no more than ǫ, we may
+conclude Prh [h(m) + c = h(m′ ) (mod b)] ≤ ⌈ 2a−1   b ⌉ǫ.                                                   ⊓
+                                                                                                            ⊔
+    Notice that choosing a to be a multiple of b can improve this bound. Consider a = 2128 and b = 2126 .
+The theorem says that at most ⌈ 2a−1                                 ′
+                                      b ⌉ = 8 values for i make h(m ) − h(m) = c + ib (mod a), when in fact
+no more than four such i values can exist. With a, b and c fixed and b|a, c + ib (mod a) = c + jb (mod a)
+whenever i = j (mod ab ). This is because a is a multiple of b, and so increasing i by a/b has no net effect
+modulo a. The following corollary is a result of this observation.
+Corollary 5. Let a and b be positive integers where b|a, and H = {h : A → Za } be ε-ADU for addition
+modulo a. Define Hb = {h mod b | h ∈ H}. Then, Hb is ( ab ǫ)-ADU for addition modulo b.
+Our final lemma allows us to look at the first two stages of VHASH hashing from a different perspective,
+achieving tighter bounds in our analysis. Lines 1–5 of the VHASH definition (Figure 1) prepare message M
+for hashing by transforming it into n = max(⌈|M |/b⌉, 1) strings M1 , M2 , . . . , Mn with |M1 | = |M2 | = · · · =
+|Mn−1 | = b. (If M is the empty string then so is M1 .) For purposes of analysis, we will group these substrings
+as
+                    Mfront = M1 || M2 || . . . || Mn−1 and Mback = Mn       if |Mn | =
+                                                                                     6 0,
+                        Mfront = M1 || M2 || . . . || Mn and Mback = λ      if |Mn | = b, and
+                                            Mfront = λ and Mback = λ        if |M | = 0.
+Notice that if M and M ′ are distinct messages, and each go through the process of Lines 1–5 and we
+                                                                     ′          ′
+interpret the results as just described, producing Mfront , Mback , Mfront and Mback , then (Mfront , Mback ) 6=
+    ′      ′
+(Mfront , Mback ) always. Lines 6–7 then compute
+             Poly(k, NH∗ [16, 64, 2126 ](K, Mfront )) + NH[16, 64, 2126 ](K, Mback ) mod (2127 − 1) ,
+which the following lemma allows us to claim as an ε-ADU hash family (for addition modulo 2127 − 1) with
+ε = 1/262 + (ℓ/b)2−115 .
+Theorem 6. Let A, B and C be non-empty sets; a, b, c and q be positive integers; and Ha = {h : A → Za },
+Hb = {h : B → Zb } and Hc = {h : C → Zc } be families of functions. If Zb ⊆ A, Ha is εa -ADU
+for addition modulo a, Hb is εb -AU and Hc is εc -ADU for addition modulo c, then H = {h | h(x, y) =
+ha (hb (x)) + hc (y) (mod q) with ha ∈ Ha , hb ∈ Hb , hc ∈ Hc } is ε-ADU for addition modulo q where
+ε = max(⌈ 2a−1             2c−1
+             q ⌉εa + εb , ⌈ q ⌉εc ).
+                                             64-bit Tags                        128-bit Tags
+               Architechture          64B        512B        4KB         64B        512B         4KB
+       64-bit Intel Core 2 “Merom” 6.0 → 6.0 1.2 → 1.2 0.6 → 0.6 6.7 → 7.0 1.7 → 1.7 1.2 → 1.1
+          32-bit PowerPC “G4”     15.2 → 13.9 6.6 → 6.4 5.7 → 5.6 22.5 → 21.3 11.3 → 11.9 10.3 → 11.1
+            32-bit ARM v5TE       41.5 → 38.6 12.9 → 13.1 9.8 → 10.1 52.6 → 51.9 22.9 → 22.1 20.0 → 19.9
+
+Table 1. VMAC Performance. Changes in VMAC cycle-per-byte performance are listed as “old → new ” for
+various architectures and tag lengths over 64-, 512- and 4096-byte, cache-resident messages.
+
+
+
+Proof: Let d be an element of Zq , and let (x, y) 6= (x′ , y ′ ) be elements of A × B. We need to show
+Prh [h(x, y) + d = h(x′ , y ′ ) (mod q)] ≤ ε. To do so we must evaluate Prha ,hb ,hc [ha (hb (x)) + hc (y) + d =
+ha (hb (x′ )) + hc (y ′ ) (mod q)].
+    If x 6= x′ , let hb ∈ Hb be chosen randomly and let hc ∈ Hc be chosen arbitrarily. (Letting hc be chosen
+arbitrarily allows hb and hc to be dependent, if desired.) We know Prhb [hb (x) = hb (x′ )] ≤ εb . Assuming
+m = hb (x) and m′ = hb (x′ ) differ and letting d′ = hc (y) + d − hc (y ′ ), our probability becomes Prha [ha (m) +
+d′ = ha (m′ ) (mod q)], which according to Lemma 4 is no more than (⌈ 2a−1            q ⌉εa ). Because we assumed
+                ′
+hb (x) 6= hb (x ), we must compensate for the possibility that they are equal, so Prha ,hb ,hc [ha (hb (x)) + hc (y) +
+d = ha (hb (x′ ))+hc (y ′ ) (mod q)] ≤ ⌈ 2a−1                                                             ′         ′
+                                           q ⌉εa +εb . Then Prha ,hb ,hc [ha (hb (x))+hc (y)+d = ha (hb (x ))+hc (y )]
+
+
+         ≤        Pr [ha (hb (x)) + hc (y) + d = ha (hb (x′ )) + hc (y ′ ) | hb (x) 6= hb (x′ )] + Pr[hb (x) = hb (x′ )]
+             ha ,hb ,hc                                                                            hb
+
+         ≤        Pr [ha (hb (x)) + hc (y) + d = ha (hb (x′ )) + hc (y ′ ) | hb (x) 6= hb (x′ )] + εb
+             ha ,hb ,hc
+
+         = Pr[ha (m) + d′ = ha (m′ ) | m 6= m′ ] + εb
+             ha
+              2a − 1
+         ≤⌈          ⌉εa + εb
+                q
+
+If x = x′ but y 6= y ′ , then Prha ,hb ,hc [ha (hb (x)) + hc (y) + d = ha (hb (x′ )) + hc (y ′ ) (mod q)] = Prhc [hc (y) +
+d = hc (y ′ ) (mod q)] due to like-terms canceling. This probability according to Lemma 4 is no more than
+(⌈ 2c−1
+     q ⌉εc ).                                                                                                            ⊓
+                                                                                                                         ⊔
+
+    The remainder of the VHASH construction is straightforward. Lines 8–9 form a reversible mapping from
+the product of Lines 1–7 to the input of Line 10. Standard theorems about the composition of hash functions
+(eg, [1]) gives us the claimed bound of Theorem 1.
+
+
+2    Performance
+
+The changes detailed in this note have had a small effect on performance (see Table 1). Using the revised
+VHASH in VMAC over a sample of architectures, we saw no performance changes of greater than ten
+percent, but with a slight trend toward improved performance. Of the eighteen combinations of architecture,
+tag length and message length listed in Table 1, eleven improve, five deteriorate and three are unchanged
+when comparing the original VMAC with the revised version.
+   Why are performance changes not uniform? Conflicting forces are at work, each with its own architecture-
+dependent influence. Degree reduction in the polynomial hash improves performance in all cases by elimi-
+nating one or two 128-bit multiplications, but the gain is most marked on short messages (because constant
+savings are most pronounced on short messages) and on 32-bit architectures (because 128-bit multiplications
+are four times more expensive on 32-bit architectures than on 64-bit ones). On the negative side, defining
+VMAC-128 as two iterations of VMAC-64 introduces an additional 32-bytes of key, a separate polynomial
+computation and a third hashing stage, all of which are slowing influences. Also, the switch in the third stage
+from a modulus of 261 − 1 to 264 − 257 adds a small constant amount of extra work.
+   The result is a hash function that is usually a bit faster, but always with better hash collision properties,
+than the original.
+References
+1. Bierbrauer J, Johansson T, Kabatianskii G, Smeets B. On families of hash functions via geometric codes and
+   concatenation. In Advances in Cryptology – CRYPTO 1993. Springer-Verlag, 1993; 331–342.
+2. Black J, Halevi S, Krawczyk H, Krovetz T, Rogaway P. UMAC: Fast and secure message authentication. In
+   Advances in Cryptology – CRYPTO 1999. Springer-Verlag, 1999; 216–233.
+3. Carter L, Wegman M. Universal classes of hash functions. J. of Computer and System Sciences 1981; 22:265–279.
+4. Halevi S, Krawczyk H. MMH: Software message authentication in the Gbit/second rates. In Fast Software En-
+   cryption – FSE 1997. Springer-Verlag, 1997; 172–189.
+5. Krawczyk H. LFSR-based hashing and authentication. In Advances in Cryptology – CRYPTO 94. Springer-Verlag,
+   1994; 129–139.
+6. Krovetz T. Message authentication on 64-bit architectures. In Selected Areas of Cryptography – SAC 2006.
+   Springer-Verlag, 2006.
+7. Stinson D. Universal hashing and authentication codes. Designs, Codes and Cryptography 1994; 4:369–380.
+8. Wegman M, Carter L. New hash functions and their use in authentication and set equality. J. of Computer and
+   System Sciences 1979; 18:143–154.
+

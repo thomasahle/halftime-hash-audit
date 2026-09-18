@@ -1,0 +1,2 @@
+review-support/wrapper-cert/run-mac.sh: line 35: 95495 Abort trap: 6           nice -n 10 "$cert_dir/header-check-neon-ubsan" witness > "$cert_dir/neon-signed-overflow.log" 2>&1
+PASS: scalar and disclosed NEON checks; expected native build/overflow diagnostics

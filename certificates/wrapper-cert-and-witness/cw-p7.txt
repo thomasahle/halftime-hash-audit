@@ -1,0 +1,51 @@
+UNIVERSAL CLASSES OF HASH FUNCTIONS 149
+
+Suppose A = {0, I,...,@— l}and B = {0,1,...,5 — 1}. Let p be a prime with p > a.
+Let g be any function from Z, to B which, as closely as possible, maps the same number
+of elements of Z, into each element of B. Formally, we require i{y €Z,| g(y) =i}| <
+[p/b| for all ie B. A natural choice for g is the residue modulo 6. When 6 = 2* for
+some k, this amounts to taking the last & bits in the binary representation of y.
+
+Let m and m be elements of Z, with m #0. We define h,,,: A -> Z, by hy(X) =
+(mx -- n) mod p. Now define f,,,,(x) == g(m,n(x))- The class Hy is the set (fn, | m,n eZ,
+and m = O}.
+
+The following lemma is useful in proving that this class is universal, .
+
+Lemma 6. When H, is defined as above, then for any x,y ¢ A with x # y, 3u(a y=
+8(Z,, 25).
+
+Proof. ‘There is a natural correspondence between the functions 4,, , and the ordered
+pairs (r,s) where 7,s€ Z, and r # s. Specifically, we associate the function h,,, with
+the ordered pair (Ay,n(*); Mran(y)) Since m 0 and x Ay, Rmn(*) % Rm n( ¥)- This
+correspondence is one-to-one and onto since for a fixed x, y, 7 and s, the linear equations
+xm +n = r (mod p) and ym + n = s (mod f) have a unique solution for m and m in the
+field Z, .
+
+If (r,s) is the pair (Fy, a()s Ama(¥))» then fna(®) = fun) if and only if g(r) — g(s).
+Thus, 8y(x, vy) = 8,(Z,,Z,). §
+
+Proposition 7. The class H, is universal, .
+
+Proof. Let m; be the number of elements in {t € Z, | g(t) == i}. g was chosen so that
+n; <{p/b] for each i. Since p and 6 are integers, [ p/6] < (( — 1)/b) + 1. Thus fora
+given re Z,, there are no more than (p — 1)/6 choices for s such that r  s but g(r) =
+a(s). Since there are p choices for 7, p(p — 1)/b > 3u,(x, y). Recalling that for x = y,
+$y,(*, 9) = 0, this shows that Hj, is universal,.
+
+If desired, p can be chosen so the mod p operation can be calculated without a division.
+For instance, suppose p = 2’ — | for some j, and x is expressible in 2j bits. Then there
+exist xy, <2) such that x = 2a, -+ x,. » is the j high order bits of the binary
+representation of x, and x, is the j low order bits. « = x, + xy (mod p), since 2 = 1
+{mod p). Thus, the 2j bit number « can be reduced to a congruent j + 1 bit number
+by performing a shift and an add operation. To get x (mod f), only a test and perhaps
+a subtract are needed. When one uses this method, and 4 is a power of two (so the mod 5
+operation can be implemented by taking the last bits), then computing a function from
+H, takes only one multiply and a few addition, shift and Boolean operations.
+
+Tt may seem that the addition of » in the class of functions given above plays an un-
+important role. This is only partly true. Suppose for me Z, we define h(x) = mx
+(mod p), and as before define f,,(x) as g(h,,(x)). Let H = {f,|meZ, and m <0}.
+It can be shown that this class of functions comes within a factor of two of being
+universal, , that is 8,,(x, y) < 2(|H|/| B|) for any x and y. On the other hand, this
+bound cannot he improved significantly. For instance, let 6 = | B|, and choose k so

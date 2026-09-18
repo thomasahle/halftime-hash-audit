@@ -1,0 +1,50 @@
+150 CARTER AND WEGMAN
+
+that p — kb-+ k + 1 is prime (there will be infinitely many such k's.) Let g(x) = ¥
+(mod 6). Let x = 1 and y = 6 + 1. It can be shown that the 2k functions f, fy... fas
+Ffo-b  fr-nya fp each map x and y to the same value. Thus, 5;,(x, y) = 2k, while
+
+\H|_ p—1l  kb+k 1
+Tn nr een alee
+The universal, class H, may not be convenient when the keys are too long to be
+multiplied using a single machine instruction. However, the next proposition gives
+a method of extending a class of functions for long keys.
+
+PROPOSITION 8. Suppose B = {0, 1,..., 6 — 1} where b is a power of two and H is a
+class of functions from A to B with the property that for some real number r, for each x, yA
+with x + y, and for each ie B, \{fe H| f(x) Of(y) =7}| <r] A|, (Recall that © is
+the exclusive-or operation.) Define the class J of hash functions from A x A to B as follows:
+For f,g ¢H, define hy.d(( 1 ¥2)) = f(a) @ glxp), and let J = thyg| fg H}. Then for
+all x,yeéA x A with x + y, and for allie B, \{he J | h(x) @h(y) = 2} <r| J).
+
+Proof. Given x,y€A x A with x #y, write x = (x, 4%) and y = (y1, yo).
+Without loss of generality, we may assume that x, ~ 3; (otherwise, interchange the
+subscripts } and 2 in the following.) Given je B,
+
+Ihe] |Ax) @Ay) =] = hg e Hf) Os») Of(n) Ga(92) =F
+= Y iffe Hl fo) Of(a») = #@ alm) © a(ya)3l-
+
+oeH
+
+The hypothesis implies that each term of this summation is bounded by 7 | # |. Thus,
+Kee J Ma) Ok(y) = 3 <7 | HP=srisl. O
+
+Proposition 8 can be used to produce universal, classes which work on long keys.
+Suppose H is a class of functions which can be applied to keys of length a and H satisfies
+the condition of the proposition with r = 1/| B |. Then the resulting J is a class of
+functions which can be applied to keys of length 2«. Furthermore, J is universal, .
+To see this, notice that if x #y, r|J| > {ke J| h(x) © hy) = 0}| = 4,(x, 9).
+Repeated application of Proposition 8 allows us to extend the functions to arbitrarily
+long keys. Notice that if the functions in H can be applied in constant time, then the
+time required to compute an extended function is proportional to the length of the key.
+
+If we apply Proposition 8 to the class H, defined earlier, we do not quite get a universal,
+class. This is because the smallest y which satisfies the condition of the proposition
+is somewhere between 1/| B| and (1/| B/)(1 + (| B| + 1)/(p — 1)). In most applica-
+tions, | B| is very small compared to f, so the results of the theorems of this paper
+are true “within «.” Alternatively, one could modify the definition of H, to allow m
+to equal 0. The resulting class is still universal, , and Proposition 8 applies with r = i/| B|.
+
+The following universal, class of functions—denoted H, for historical reasons—
+does not require multiplication and may be better for many applications. Essentially,
+if one considers the elements of A and B to be vectors overt the field of two elements,

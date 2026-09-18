@@ -1,0 +1,965 @@
+                                        Faster 64-bit universal hashing using carry-less multiplications
+                                        Daniel Lemire · Owen Kaser
+arXiv:1503.03465v8 [cs.DS] 4 Nov 2015
+
+
+
+
+                                        Abstract Intel and AMD support the Carry-less Multipli-               Random hashing is standard in Ruby, Python and Perl.
+                                        cation (CLMUL) instruction set in their x64 processors. We       It is allowed explicitly in Java and C++11. There are many
+                                        use CLMUL to implement an almost universal 64-bit hash           fast random hash families — e.g., MurmurHash, Google’s
+                                        family (CLHASH). We compare this new family with what            CityHash [35], SipHash [3] and VHASH [12]. Cryptogra-
+                                        might be the fastest almost universal family on x64 proces-      phers have also designed fast hash families with strong the-
+                                        sors (VHASH). We find that CLHASH is at least 60 %               oretical guarantees [6, 18, 24]. However, much of this work
+                                        faster. We also compare CLHASH with a popular hash func-         predates the introduction of the CLMUL instruction set in
+                                        tion designed for speed (Google’s CityHash). We find that        commodity x86 processors. Intel and AMD added CLMUL
+                                        CLHASH is 40 % faster than CityHash on inputs larger than        and its pclmulqdq instruction to their processors to accel-
+                                        64 bytes and just as fast otherwise.                             erate some common cryptographic operations. Although the
+                                                                                                         pclmulqdq instruction first became available in 2010, its
+                                        Keywords Universal hashing, Carry-less multiplication,           high cost in terms of CPU cycles — specifically an 8-cycle
+                                        Finite field arithmetic                                          throughput on pre-Haswell Intel microarchitectures and a 7-
+                                                                                                         cycle throughput on pre-Jaguar AMD microarchitectures —
+                                                                                                         limited its usefulness outside of cryptography. However, the
+                                        1 Introduction                                                   throughput of the instruction on the newer Haswell archi-
+                                                                                                         tecture is down to 2 cycles, even though it remains a high
+                                        Hashing is the fundamental operation of mapping data ob-         latency operation (7 cycles) [16, 21].1 See Table 1. Our main
+                                        jects to fixed-size hash values. For example, all objects in     contribution is to show that the pclmulqdq instruction can
+                                        the Java programming language can be hashed to 32-bit in-        be used to produce a 64-bit string hash family that is faster
+                                        tegers. Many algorithms and data structures rely on hashing:     than known approaches while offering stronger theoretical
+                                        e.g., authentication codes, Bloom filters and hash tables. We    guarantees.
+                                        typically assume that given two data objects, the probabil-
+                                        ity that they have the same hash value (called a collision) is
+                                        low. When this assumption fails, adversaries can negatively      2 Random Hashing
+                                        impact the performance of these data structures or even cre-
+                                        ate denial-of-service attacks. To mitigate such problems, we     In random hashing, we pick a hash function at random from
+                                        can pick hash functions at random (henceforth called ran-        some family, whereas an adversary might pick the data in-
+                                        dom hashing).                                                    puts. We want distinct objects to be unlikely to hash to the
+                                                                                                         same value. That is, we want a low collision probability.
+                                        D. Lemire                                                            We consider hash functions from X to [0, 2L ). An L-bit
+                                        LICEF Research Center, TELUQ, Université du Québec             family is universal [10, 11] if the probability of a collision is
+                                        Montreal, QC Canada
+                                                                                                         no more than 2−L . That is, it is universal if
+                                        E-mail: lemire@gmail.com
+                                        O. Kaser                                                         P (h(x) = h(x0 )) ≤ 2−L
+                                        Dept. of CSAS, University of New Brunswick, Saint John
+                                        Saint John, NB Canada                                             1  The low-power AMD Jaguar microarchitecture does even better
+                                        E-mail: o.kaser@computer.org                                     with a throughput of 1 cycle and a latency of 3 cycles.
+2                                                                                                                  Daniel Lemire, Owen Kaser
+
+Table 1: Relevant SIMD intrinsics and instructions on Haswell Intel processors, with latency and reciprocal throughput in
+CPU cycles per instruction [16, 21].
+
+                         intrinsic                   instruction    description                        latency   rec. thr.
+                          mm clmulepi64 si128      pclmulqdq        64-bit carry-less multiplication     7          2
+                          mm or si128                 por           bitwise OR                           1        0.33
+                          mm xor si128                pxor          bitwise XOR                          1        0.33
+                          mm slli epi64              psllq          shift left two 64-bit integers       1          1
+                          mm srli si128              psrldq         shift right by x bytes               1        0.5
+                          mm shuffle epi8            pshufb         shuffle 16 bytes                     1         0.5
+                          mm cvtsi64 si128            movq          64-bit integer as 128-bit reg.       1          –
+                          mm cvtsi128 si64            movq          64-bit integer from 128-bit reg.     2          –
+                          mm load si128              movdqa         load a 128-bit reg. from memory      1         0.5
+                                                                    (aligned)
+                          mm lddqu si128              lddqu         load a 128-bit reg. from memory      1         0.5
+                                                                    (unaligned)
+                          mm setr epi8                     –        construct 128-bit reg. from          –          –
+                                                                    16 bytes
+                          mm set epi64x                    –        construct 128-bit reg. from two      –          –
+                                                                    64-bit integers
+
+
+
+                Table 2: Notation and basic definitions                     new family collide with probability 1 on the first 32 bits,
+                                                                            even though the collision probability on the full hash values
+    h : X → {0, 1, . . . , 2L − 1}   L-bit hash function                    is low (1/232 ). Using the first bits of these hash functions
+    universal                        P (h(x) = h(x0 )) ≤ 1/2L for           could have disastrous consequences in the implementation
+                                     x 6= x0                                of a hash table.
+    -almost universal               P (h(x) = h(x0 )) ≤  for x 6=             Therefore, we consider stronger forms of universality.
+                                     x0
+                                                                             – A family is ∆-universal [37, 14] if
+    XOR-universal                    P (h(x) = h(x0 ) ⊕ c) ≤ 1/2L
+                                     for any c ∈ [0, 2L ) and distinct
+                                     x, x0 ∈ X
+                                                                                  P (h(x) = h(x0 ) + c mod 2L ) ≤ 2−L
+    -almost XOR-universal           P (h(x) = h(x0 ) ⊕ c) ≤  for             for any constant c and any x, x0 ∈ X such that x 6= x0 .
+                                     any integer c ∈ [0, 2L ) and dis-
+                                                                               It is -almost ∆-universal if P (h(x) = h(x0 ) + c mod
+                                     tinct x, x0 ∈ X
+                                                                               2L ≤  for any constant c and any x, x0 ∈ X such that
+                                                                               x 6= x0 .
+for any fixed x, x0 ∈ X such that x 6= x0 , given that we                    – A family is -almost XOR-universal if
+pick h at random from the family. It is -almost univer-                          P (h(x) = h(x0 ) ⊕ c) ≤ 
+sal [36] (also written -AU) if the probability of a collision is
+bounded by . I.e., P (h(x) = h(x0 )) ≤ , for any x, x0 ∈ X                      for any integer constant c ∈ [0, 2L ) and any x, x0 ∈ X
+such that x 6= x0 . (See Table 2.)                                                such that x 6= x0 (where ⊕ is the bitwise XOR). A family
+                                                                                  that is 1/2L -almost XOR-universal is said to be XOR-
+                                                                                  universal [37].
+2.1 Safely Reducing Hash Values
+                                                                                Given an -almost ∆-universal family H of hash func-
+                                                                            tions h : X → [0, 2L ), the family of hash functions
+Almost universality can be insufficient to prevent frequent
+                                                                                             0
+collisions since a given algorithm might only use the first                 {h(x) mod 2L | h ∈ H}
+few bits of the hash values. Consider hash tables. A hash
+                                                                                                 0           0
+table might use as a key only the first b bits of the hash values           from X to [0, 2L ) is 2L−L × -almost ∆-universal [12].
+when its capacity is 2b . Yet even if a hash family is -almost             The next lemma shows that a similar result applies to almost
+universal, it could still have a high collision probability on              XOR-almost universal families.
+the first few bits.
+     For example, take any 32-bit universal family H, and                   Lemma 1 Given an -almost XOR-universal family H of
+derive the new 64-bit 1/232 -almost universal 64-bit family                 hash functions h : X → [0, 2L ) and any positive integer
+                                                                                                                             0
+by taking the functions from H and multiplying them by                      L0 < L, the family of hash functions {h(x) mod 2L | h ∈
+                                                                                               0         0
+232 : h0 (x) = h(x) × 232 . Clearly, all functions from this                H} from X to [0, 2L ) is 2L−L × -almost XOR-universal.
+Faster 64-bit universal hashing using carry-less multiplications                                                                                        3
+
+
+Proof For any integer constant c ∈ [0, 2L ), consider the                from X m to [0, 2L )m , where h is in H. Family H0 is -almost
+                                      0
+equation h(x) = (h(x0 ) ⊕ c) mod 2L for x 6= x0 with h                   universal.
+picked from H. Pick any positive integer L0 < L. We have                 The proof is not difficult. Consider two distinct values from
+                   0
+P (h(x) = (h(x ) ⊕ c mod 2 ))         L0                                 X m , x1 , x2 , . . . , xm and x01 , x02 , . . . , x0m . Because the tuples
+          X                                                              are distinct, they must differ in at least one component: xi 6=
+   =               P (h(x) = h(x0 ) ⊕ c ⊕ z)                             x0i . It follows that h0 (x1 , x2 , . . . , xm ) and h0 (x01 , x02 , . . . , x0m )
+       z | z mod 2L0 =0                                                  collide with probability at most P (h(xi ) = h(x0i )) ≤ ,
+                                  0                                      showing the result.
+where the sum is over 2L−L distinct z values. Because H
+is -almost XOR-universal, we have that P (h(x) = h(x0 ) ⊕
+c⊕z) ≤  for any c and any z. Thus, we have that P (h(x) =               2.4 Variable-Length Hashing From Fixed-Length Hashing
+                   0          0
+h(x0 ) ⊕ c mod 2L ) ≤ 2L−L , showing the result.
+                                                                         Suppose that we are given a family H of hash functions that
+    It follows from Lemma 1 that if a family is XOR-universal,           is XOR universal over fixed-length strings. That is, we have
+then its modular reductions are XOR-universal as well.                   that P (h(s) = h(s0 ) ⊕ c) ≤ 1/2L if the length of s is the
+    As a straightforward extension of this lemma, we could               same as the length of s0 (|s| = |s0 |). We can create a new
+show that when picking any L0 bits (not only the least sig-              family that is XOR universal over variable-length strings
+                             0
+nificant), the result is 2L−L × -almost XOR-universal.                  by introducing a hash family on string lengths. Let G be a
+                                                                         family of XOR universal hash functions g over length val-
+                                                                         ues. Consider the new family of hash functions of the form
+2.2 Composition
+                                                                         h(s) ⊕ g(|s|) where h ∈ H and g ∈ G. Let us consider two
+It can be useful to combine different hash families to create            distinct strings s and s0 . There are two cases to consider.
+new ones. For example, it is common to compose hash fam-                   – If s and s0 have the same length so that g(|s|) = g(|s0 |)
+ilies. When composing hash functions (h = g ◦ f ), the uni-                  then we have XOR universality since
+versality degrades linearly: if g is picked from an g -almost                P (h(s) ⊕ g(|s|) = h(s0 ) ⊕ g(|s0 |) ⊕ c)
+universal family and f is picked (independently) from an
+                                                                               = P (h(s) = h(s0 ) ⊕ c)
+f -almost universal family, the result is g + f -almost uni-
+versal [36].                                                                   ≤ 1/2L
+     We sketch the proof. For x 6= x0 , we have that g(f (x)) =             where the last inequality follows because h ∈ H, an
+g(f (x0 )) collides if f (x) = f 0 (x). This occurs with proba-             XOR universal family over fixed-length strings.
+bility at most f since f is picked from an f -almost uni-                                                            6 |s0 |), then we
+                                                                          – If the strings have different lengths (|s| =
+versal family. If not, they collide if g(y) = g(y 0 ) where                 again have XOR universality because
+y = f (x) and y 0 = f (x0 ), with probability bounded by
+                                                                              P (h(s) ⊕ g(|s|) = h(s0 ) ⊕ g(|s0 |) ⊕ c)
+g . Thus, we have bounded the collision probability by f +
+(1 − f )g ≤ f + g , establishing the result.                               = P (g(|s|) = g(|s0 |) ⊕ (c ⊕ h(s) ⊕ h(s0 )))
+     By extension, we can show that if g is picked from an                     = P (g(|s|) = g(|s0 |) ⊕ c0 )
+g -almost XOR-universal family, then the composed result                      ≤ 1/2L
+(h = g ◦ f ) is going to be g + f -almost XOR-universal. It
+is not required for f to be almost XOR-universal.                            where we set c0 = c ⊕ h(s) ⊕ h(s0 ), a value independent
+                                                                             from |s| and |s0 |. The last inequality follows because g
+                                                                             is taken from a family G that is XOR universal.
+2.3 Hashing Tuples                                                       Thus the result (h(s)⊕g(|s|)) is XOR universal. We can also
+                                                                         generalize the analysis. Indeed, if H and G are -almost uni-
+If we have universal hash functions from X to [0, 2L ), then             versal, we could show that the result is -almost universal.
+we can construct hash functions from X m to [0, 2L )m while              We have the following lemma.
+preserving universality. The construction is straightforward:
+h0 (x1 , x2 , . . . , xm ) = (h(x1 ), h(x2 ), . . . , h(xm )). If h is   Lemma 3 Let H be an XOR universal family of hash func-
+picked from an -almost universal family, then the result is             tions over fixed-length strings. Let G be an XOR universal
+-almost universal. This is true even though a single h is               family of hash functions over integer values. We have that
+picked and reused m times.                                               the family of hash functions of the form s → h(s) ⊕ g(|s|)
+                                                                         where h ∈ H and g ∈ G is XOR universal over all strings.
+Lemma 2 Consider an -almost universal family H from                         Moreover, if H and G are merely -almost universal, then
+X to [0, 2L ). Then consider the family of functions H0 of               the family of hash functions of the form s → h(s) ⊕ g(|s|)
+the form h0 (x1 , x2 , . . . , xm ) = (h(x1 ), h(x2 ), . . . , h(xm ))   is also -almost universal.
+4                                                                                                              Daniel Lemire, Owen Kaser
+
+
+2.5 Minimally Randomized Hashing                                      We can summarize VHASH (see Algorithm 1) as fol-
+                                                                   lows:
+Many hashing algorithms — for instance, CityHash [35] —
+rely on a small random seed. The 64-bit version of CityHash
+                                                                    – NH is used to generate a 128-bit hash value for each
+takes a 64-bit integer as a seed. Thus, we effectively have a
+                                                                      block of 16 words. The result is 1/264 -almost ∆-universal
+family of 264 hash functions — one for each possible seed
+                                                                      on each block.
+value.
+                                                                    – These hash values are mapped to a value in [0, 2126 ) by
+    Given such a small family (i.e., given few random bits),
+                                                                      applying a modular reduction. These reduced hash val-
+we can prove that it must have high collision probabilities.
+                                                                      ues are then aggregated with a polynomial hash and fi-
+Indeed, consider the set of all strings of m 64-bit words.
+                                                                      nally reduced to a 64-bit value.
+There are 264m such strings.
+    – Pick one hash function from the CityHash family. This
+                                                                   In total, the VHASH family is 1/261 -almost ∆-universal
+      function hashes every one of the 264m strings to one of
+                                                                   over [0, 264 − 257) for input strings of up to 262 bits [12,
+      264 hash values. By a pigeonhole argument [31], there
+                                                                   Theorem 1].
+      must be at least one hash value where at least 264m /264 =
+      264(m−1) strings collide.                                        For long input strings, we expect that much of the run-
+    – Pick another hash function. Out of the 264(m−1) strings      ning time of VHASH is in the computation of NH on blocks
+      colliding when using the first hash function, we must        of 16 words. On recent x64 processors, this computation in-
+      have 264(m−2) strings also colliding when using the sec-     volves 8 multiplications using the mulq instruction (with
+      ond hash function.                                           two 64-bit inputs and two 64-bit outputs). For each group of
+                                                                   two consecutive words (si and si+1 ), we also need two 64-
+We can repeat this process m−1 times until we find 264 strings
+                                                                   bit additions. To sum all results, we need 7 128-bit additions
+colliding when using any of these m − 1 hash functions. If
+                                                                   that can be implemented using two 64-bit additions (addq
+an adversary picks any two of our 264 strings and we pick
+                                                                   and adcq). All of these operations have a throughput of at
+the hash function at random in the whole family of 264 hash
+                                                                   least 1 per cycle on Haswell processors. We can expect NH
+functions, we get a collision with a probability of at least
+                                                                   and, by extension, VHASH to be fast.
+(m − 1)/264 . Thus, while we do not have a strict bound on
+the collision probability of the CityHash family, we know              VHASH uses only 16 64-bit random integers for the NH
+just from the small size of its seed that it must have a rela-     family. As in § 2.3, we only need one specific NH function
+tively high collision probability for long strings. In contrast,   irrespective of the length of the string. VHASH also uses
+VHASH and our CLHASH (see § 5) use more than 64 ran-               a 128-bit random integer k and two more 64-bit random
+dom bits and have correspondingly better collision bounds          integers k10 and k20 . Thus VHASH uses slightly less than
+(see Table 4).                                                     160 random bytes.
+
+
+3 VHASH                                                            Algorithm 1 VHASH algorithm
+                                                                   Require: 16 randomly picked 64-bit integers k1 , k2 , . . . , k16 defining
+The VHASH family [12, 25] was designed for 64-bit pro-                 a 128-bit NH hash function (see Equation 1) over inputs of length
+cessors. By default, it operates over 64-bit words. Among              16
+hash families offering good almost universality for large data     Require: k, a randomly picked element of {w296 + x264 + y 232 +
+                                                                       z | integers w, x, y, z ∈ [0, 229 )}
+inputs, VHASH might be the fastest 64-bit alternative on
+                                                                   Require: k10 , k20 , randomly picked integers in [0, 264 − 258]
+x64 processors — except for our own proposal (see § 5).             1: input: string M made of |M | bytes
+    VHASH is -almost ∆-universal and builds on the 128-            2: Let n be the number of 16-word blocks (d|M |/16e).
+bit NH family [12]:                                                 3: Let Mi be the substring of M from index i to i + 16, padding with
+                                                                       zeros if needed.
+             l/2                                                    4: Hash each Mi using the NH function, labelling the result 128-bit
+             X
+NH(s) =            (s2i−1 + k2i−1 mod 264 )                            results ai for i = 1, . . . , n.
+             i=1
+                                                             (1)    5: Hash the resulting ai with a polynomial hash function and store
+                                       64
+                                                  128
+                                                                       the value in a 127-bit hash value p: p = kn + a1 kn−1 + · · · +
+                   × (s2i + k2i mod 2 ) mod 2            .             an + (|M | mod 1024) × 264 mod (2127 − 1).
+                                                                    6: Hash the 127-bit value p down to a 64-bit value: z = (p1 + k10 ) ×
+NH is 1/264 -almost ∆-universal with hash values in [0, 2128 ).        (p2 + k20 ) mod (264 − 257), where p1 = p ÷ (264 − 232) and
+Although the NH family is defined only for inputs contain-             p2 = p mod (264 − 232 ).
+ing an even number of components, we can extend it to in-           7: return the 64-bit hash value z
+clude odd numbers of components by padding the input with
+a zero component.
+Faster 64-bit universal hashing using carry-less multiplications                                                                                5
+
+
+3.1 Random Bits                                                       – a ×GF (p) b ≡ a × b mod p
+                                                                      – and a +GF (p) b ≡ a + b mod p.
+Nguyen and Roscoe showed that at least log(m/) random
+bits are required [31],2 where m is the maximal string length        The numbers 0 and 1 are the identity elements. Given an
+in bits and  is the collision bound. For VHASH, the string          element a, its additive inverse is p − a.
+length is limited to 262 bits and the collision bound is  =             It is not difficult to check that all non-zero elements have
+1/261 . Therefore, for hash families offering the bounds of          a multiplicative inverse. We review this classical result for
+VHASH, we have that log m/ = log(262 ×261 ) = 123 ran-              completeness. Given a non-zero element a and two distinct
+dom bits are required.                                               x, x0 , we have that ax mod p 6= ax0 mod p because p is
+    That is, 16 random bytes are theoretically required to           prime. Hence, starting with a fixed non-zero element a, we
+achieve the same collision bound as VHASH while many                 have that the set {ax mod p | x ∈ [0, p)} has cardinal-
+more are used (160 bytes) This suggests that we might be             ity p and must contain 1; thus, a must have a multiplicative
+able to find families using far fewer random bits while main-        inverse.
+taining the same good bounds. In fact, it is not difficult to
+modify VHASH to reduce the use of random bits. It would
+suffice to reduce the size of the blocks down from 16 words.         4.2 Hash Families in a Field
+We could show that it cannot increase the bound on the colli-
+sion probability by more than 1/264 . However, reducing the          Within a field, we can easily construct hash families having
+size of the blocks has an adverse effect on speed. With large        strong theoretical guarantees, as the next lemma illustrates.
+blocks and long strings, most of the input is processed with
+the NH function before the more expensive polynomial hash            Lemma 4 The family of functions of the form
+function is used. Thus, there is a trade-off between speed
+and the number of random bits, and VHASH is designed                 h(x) = ax
+for speed on long strings.
+                                                                     in a finite field (GF (pn )) is ∆-universal, provided that the
+                                                                     key a is picked from all values of the field.
+4 Finite Fields
+
+Our proposed hash family (CLHASH, see § 5) works over                      As another example, consider hash functions of the form
+a binary finite field. For completeness, we review field the-        h(x1 , x2 , . . . , xm ) = am−1 x1 + am−2 x2 + · · · + xm where
+ory briefly, introducing (classical) results as needed for our       a is picked at random (a random input). Such polynomial
+purposes.                                                            hash functions can be computed efficiently using Horner’s
+     The real numbers form what is called a field. A field is        rule: starting with r = x1 , compute r ← ar + xi for i =
+such that addition and multiplication are associative, com-          2, . . . , m. Given any two distinct inputs, x1 , x2 , . . . , xm and
+mutative and distributive. We also have identity elements            x01 , x02 , . . . , x0m , we have that h(x1 , . . . , xm )−h(x01 , . . . , x0m )
+(0 for addition and 1 for multiplication). Crucially, all non-       is a non-zero polynomial of degree at most m − 1 in a. By
+zero elements a have an inverse a−1 (which is defined by             the fundamental theorem of algebra, we have that it is zero
+a × a−1 = a−1 × a = 1).                                              for at most m − 1 distinct values of a. Thus we have that the
+     Finite fields (also called Galois fields) are fields contain-   probability of a collision is bounded by (m − 1)/pn where
+ing a finite number of elements. All finite fields have cardi-       pn is the cardinality of the field. For example, VHASH uses
+nality pn for some prime p. Up to an algebraic isomorphism           polynomial hashing with p = 2127 − 1 and n = 1.
+(i.e., a one-to-one map preserving addition and multiplica-                We can further reduce the collision probabilities if we
+tion), given a cardinality pn , there is only one field (hence-      use m random inputs a1 , . . . , am picked in the field to com-
+forth GF (pn )). And for any power of a prime, there is a            pute a multilinear function: h(x1 , . . . , xm ) = a1 x1 +a2 x2 +
+corresponding field.                                                 · · · + am xm . We have ∆-universality. Given two distinct in-
+                                                                     puts, x1 , . . . , xm and x01 , . . . , x0m , we have that xi 6= x0i for
+                                                                     some i. Thus we have that h(x1 , . . . , P      xm ) = c+h(x01 , . . . , x0m )
+4.1 Finite Fields of Prime Cardinality                               if and only if ai = (xi − xi ) (c + j6=i aj (x0j − xj )).
+                                                                                                         0 −1
+
+                                                                           If m is even, we can get the same bound on the collision
+It is easy to create finite fields that have prime cardinality       probability with half the number of multiplications [7, 26,
+(GF (p)). Given p, an instance of GF (p) is given by the             29]:
+set of integers in [0, p) with additions and multiplications
+completed by a modular reduction:                                    h(x1 , x2 , . . . , xm )
+  2   In the present paper, log n means log2 n.                      = (a1 + x1 )(a2 + x2 ) + · · · + (am−1 + xm−1 )(am + xm ).
+6                                                                                                                         Daniel Lemire, Owen Kaser
+
+
+The argument is similar. Consider that                                         where ai−k bk is just aLregular multiplication between two
+                                                                                                          i
+                                                                               integers in {0, 1} and k=0 is the bitwise XOR of a range
+(xi + ai )(ai+1 + xi+1 ) − (x0i + ai )(ai+1 + x0i+1 )
+                                                                               of values. The carry-less product of two L-bit integers is
+= ai+1 (xi − x0i ) + ai (xi+1 − x0i+1 ) + xi+1 xi + x0i x0i+1 .                a 2L-bit integer. We can check that the integers with ⊕ as
+Take two distinct inputs, x1 , x2 , . . . , xm and x01 , x02 , . . . , x0m .   addition and ? as multiplication form a ring: addition and
+As before, we have that xi 6= x0i for some i. Without loss of                  multiplication are associative, commutative and distributive,
+generality, assume that i is odd; then we can find a unique                    and there is an additive identity element. In this instance, the
+solution for ai+1 : to do this, start from h(x1 , . . . , xm ) =               number 1 is a multiplicative identity element (a?1 = 1?a =
+c + h(x01 , . . . , x0m ) and solve for ai+1 (xi − x0i ) in terms of           a). Except for the number 1, no number has a multiplicative
+an expression that does not depend on ai+1 . Then use the                      inverse in this ring.
+fact that xi − x0i has an inverse. This shows that the collision                   Given the ring determined by ⊕ and ?, we can derive a
+probability is bounded by 1/pn and we have ∆-universality.                     corresponding finite field. However, just as with finite fields
+                                                                               of prime cardinality, we need some kind of modular reduc-
+Lemma 5 Given an even number m, the family of functions                        tion and a concept equivalent to that of prime numbers3 .
+of the form                                                                        Let us define degree(x) to be the position of the most
+h(x1 , x2 , . . . , xm ) =(a1 + x1 )(a2 + x2 )                                 significant non-zero bit of x, starting at 0 (e.g., degree(1) =
+                                                                               0, degree(2) = 1, degree(2j ) = j). For example, we have
+                           + (a3 + x3 )(a4 + x4 )
+                                                                               degree(x) ≤ 127 for any 128-bit integer x. Given any two
+                           + ···                                               non-zero integers a, b, we have that degree(a?b) = degree(a)+
+                           + (am−1 + xm−1 )(am + xm )                          degree(b) as a straightforward consequence of Equation 2.
+                                                                               Similarly, we have that
+in a finite field (GF (pn )) is ∆-universal, providing that the
+keys a1 , . . . , am are picked from all values of the field. In               degree(a ⊕ b) ≤ max(degree(a), degree(b)).
+particular, the collision probability between two distinct in-
+puts is bounded by 1/pn .                                                          Not unlike regular multiplication, given integers a, b with
+                                                                               b 6= 0, there are unique integers α, β (henceforth the quo-
+                                                                               tient and the remainder) such that
+4.3 Binary Finite Fields
+                                                                               a=α?b ⊕ β                                                            (3)
+Finite fields having prime cardinality are simple (see § 4.1),
+but we would prefer to work with fields having a power-                        where degree(β) < degree(b).
+of-two cardinality (also called binary fields) to match com-                        The uniqueness of the quotient and the remainder is eas-
+mon computer architectures. Specifically, we are interested                    ily shown. Suppose that there is another pair of values α0 , β 0
+in GF (264 ) because our desktop processors typically have                     with the same property. Then α0 ? b ⊕ β 0 = α ? b ⊕ β
+64-bit architectures.                                                          which implies that (α0 ⊕ α) ? b = β 0 ⊕ β. However, since
+    We can implement such a field over the integers in [0, 2L )                degree(β 0 ⊕ β) < degree(b) we must have that α = α0 .
+by using the following two operations. Addition is defined                     From this it follows that β = β 0 , thus establishing unique-
+as the bitwise XOR (⊕) operation, which is fast on most                        ness.
+computers:                                                                          We define ÷ and mod operators as giving respectively
+                                                                               the quotient (a ÷ b = α) and remainder (a mod b = β) so
+a +GF (2L ) b ≡ a ⊕ b.
+                                                                               that the equation
+The number 0 is the additive identity element (a ⊕ 0 =
+0 ⊕ a = a), and every number is its own additive inverse:                      a ≡ a ÷ b ? b ⊕ a mod b                                              (4)
+a ⊕ a = 0. Note that because binary finite fields use XOR
+                                                                               is an identity equivalent to Equation 3. (To avoid unneces-
+as an addition, ∆-universality and XOR-universality are ef-
+                                                                               sary parentheses, we use the following operator precedence
+fectively equivalent for our purposes in binary finite fields.
+                                                                               convention: ?, mod and ÷ are executed first, from left to
+    Multiplication is defined as a carry-less multiplication
+                                                                               right, followed by ⊕.)
+followed by a reduction. We use the convention that ai is
+                                                                                   In the general case, we can compute a ÷ b and a mod b
+the ith least significant bit of integer a and ai = 0 if i is
+                                                                               using a straightforward variation on the Euclidean division
+larger than the most significant bit of a. The ith bit of the
+carry-less multiplication a ? b of a and b is given by                            3 The general construction of a finite field of cardinality pn for
+
+                                                                               n > 1 is commonly explained in terms of polynomials with coeffi-
+             i
+             M                                                                 cients from GF (p). To avoid unnecessary abstraction, we present finite
+(a ? b)i ≡         ai−k bk                                              (2)    fields of cardinality 2L using regular L-bit integers. Interested readers
+             k=0                                                               can see Mullen and Panario [30], for the alternative development.
+Faster 64-bit universal hashing using carry-less multiplications                                                                             7
+
+
+algorithm (see Algorithm 2) which proves the existence of                minimal subdegree (4).4 We use the fact that this subdegree
+the remainder and quotient. Checking the correctness of the              is small to accelerate the computation of the modular reduc-
+algorithm is straightforward. We start initially with values α           tion in the next section.
+and β such that a = α ? b ⊕ β. By inspection, this equality
+is preserved throughout the algorithm. Meanwhile, the algo-
+rithm only terminates when the degree of β is less than that
+of b, as required. And the algorithm must terminate, since
+the degree of q is reduced by at least one each time it is up-           4.4 Efficient Reduction in GF (264 )
+dated (for a maximum of degree(a) − degree(b) + 1 steps).
+                                                                         AMD and Intel have introduced a fast instruction that can
+                                                                         compute a carry-less multiplication between two 64-bit num-
+Algorithm 2 Carry-less division algorithm                                bers, and it generates a 128-bit integer. To get the multipli-
+                                                                         cation in GF (264 ), we must still reduce this 128-bit integer
+ 1: input: Two integers a and b, where b must be non-zero
+ 2: output: Carry-less quotient and remainder: α = a ÷ b and β =         to a 64-bit integer. Since there is no equivalent fast modular
+    a mod b, such that a = α ? b ⊕ β and degree(β ) < b                  instruction, we need to derive an efficient algorithm.
+ 3: Let α ← 0 and β ← a                                                       There are efficient reduction algorithms used in cryp-
+ 4: while degree(β ) ≥ degree(b) do
+ 5:    let x ← 2degree(β )−degree(b)                                     tography (e.g., from 256-bit to 128-bit integers [17]), but
+ 6:    α ← x ⊕ α, β ← x ? b ⊕ β                                          they do not suit our purposes: we have to reduce to 64-
+ 7: end while                                                            bit integers. Inspired by the classical Barrett reduction [5],
+ 8: return α and β                                                       Knežević et al. proposed a generic modular reduction al-
+                                                                         gorithm in GF (2n ), using no more than two multiplica-
+                                                                         tions [22]. We put this to good use in previous work [26].
+    Given a = α ? b ⊕ β and a0 = α0 ? b ⊕ β 0 , we have that             However, we can do the same reduction using a single mul-
+a ⊕ a0 = (α ⊕ α0 ) ? b ⊕ (β ⊕ β 0 ). Thus, it can be checked             tiplication. According to our tests, the reduction technique
+that divisions and modular reductions are distributive:                  presented next is 30 % faster than an optimized implemen-
+(a ⊕ b) mod p = (a mod p) ⊕ (b mod p),                             (5)   tation based on Knežević et al.’s algorithm.
+                                                                             Let us write p = 264 ⊕ r. In our case, we have r =
+(a ⊕ b) ÷ p = (a ÷ p) ⊕ (b ÷ p).                                   (6)   2 + 23 + 2 + 1 = 27 and degree(r) = 4. We are interested
+                                                                          4
+
+                                                                         in applying a modular reduction by p to the result of the
+Thus, we have (a ⊕ b) mod p = 0 ⇒ a mod p = b mod p.                     multiplication of two integers in [0, 264 ), and the result of
+Moreover, by inspection, we have that degree(a mod b) <                  such a multiplication is an integer x such that degree(x) ≤
+degree(b) and degree(a ÷ b) = degree(a) − degree(b).                     127. We want to compute x mod p quickly. We begin with
+    The carry-less multiplication by a power of two is equiv-            the following lemma.
+alent to regular multiplication. For this reason, a modular
+reduction by a power of two (e.g., a mod 264 ) is just the
+regular integer modular reduction. Idem for division.                    Lemma 6 Consider any 64-bit integer p = 264 ⊕ r. We
+    There are non-zero integers a such that there is no inte-            define the operations mod and ÷ as the counterparts of the
+ger b other than 1 such that a mod b = 0; effectively a is a             carry-less multiplication ? as in § 4.3. Given any x, we have
+prime number under the carry-less multiplication interpreta-             that
+tion. These “prime integers” are more commonly known as
+irreducible polynomials in the ring of polynomials GF 2[x],
+so we call them irreducible instead of prime. Let us pick                x mod p
+such an irreducible integer p (arbitrarily) such that the de-            = ((z ÷ 264 ) ? 264 ) mod p ⊕ z mod 264 ⊕ x mod 264
+gree of p is 64. One such integer is 264 + 24 + 23 + 2 + 1.
+Then we can finally define the multiplication operation in
+GF (264 ):                                                               where z ≡ (x ÷ 264 ) ? r.
+a ×GF (264 ) b ≡ (a ? b) mod p.
+Coupled with the addition +GF (264 ) that is just a bitwise              Proof We have that x = (x ÷ 264 ) ? 264 ⊕ x mod 264 for
+XOR, we have an implementation of the field GF (264 ) over               any x by definition. Applying the modular reduction on both
+integers in [0, 264 ).
+    We call the index of the second most significant bit the               4 This can be readily verified using a mathematical software package
+subdegree. We chose an irreducible p of degree 64 having                 such as Sage or Maple.
+8                                                                                                          Daniel Lemire, Owen Kaser
+
+
+sides of the equality, we get                                            Thus, in the worst possible case, we would need to mem-
+                                                                     oize 16 distinct 128-bit integers to represent ((z ÷ 264 ) ?
+x mod p = (x ÷ 264 ) ? 264 mod p ⊕ x mod 264 mod p
+                                                                     264 ) mod p. However, observe that the degree of z ÷ 264 is
+            = (x ÷ 264 ) ? 264 mod p ⊕ x mod 264                     bounded by degree(x) − 64 + 4 − 64 ≤ 127 − 128 + 4 = 3
+           by Fact 1                                                 since degree(x) ≤ 127. By using Lemma 8, we show that
+            = (x ÷ 264 ) ? r mod p ⊕ x mod 264                       each integer ((z ÷ 264 ) ? 264 ) mod p has degree bounded by
+                                                                     7 so that it can be represented using no more than 8 bits: set-
+           by Fact 2
+                                                                     ting L = 64 and w ≡ z ÷ 264 , degree(w) ≤ 3, degree(r) =
+            = z mod p ⊕ x mod 264                                    4 and degree(w) + degree(r) ≤ 7.
+           by z’s def.                                                   Effectively, the lemma says that if you take a value of
+            = ((z ÷ 264 ) ? 264 ) mod p ⊕ z mod 264                  small degree w, you multiply it by 2L and then compute the
+                                                                     modular reduction on the result and a value p that is almost
+             ⊕ x mod 264
+                                                                     2L (except for a value of small degree r), then the result has
+           by Fact 3                                                 small degree: it is bounded by the sum of the degrees of w
+where Facts 1, 2 and 3 are as follows:                               and r.
+    – (Fact 1) For any x, we have that (x mod 264 ) mod p =          Lemma 8 Consider p = 2L ⊕ r, with r of degree less than
+      x mod 264 .                                                    L. For any w, the degree of w ? 2L mod p is bounded by
+    – (Fact 2) For any integer z, we have that (264 ⊕ r) ?           degree(w) + degree(r).
+      z mod p = p ? z mod p = 0 and therefore                           Moreover, when degree(w) + degree(r) < L then the
+                                                                     degree of w ? 2L mod p is exactly degree(w) + degree(r).
+      264 ? z mod p = r ? z mod p
+                                                                     Proof The result is trivial if degree(w) + degree(r) ≥ L,
+      by the distributivity of the modular reduction (Equation 5).
+                                                                     since the degree of w ? 2L mod p must be smaller than the
+    – (Fact 3) Recall that by definition z = (z ÷ 264 ) ? 264 ⊕
+                                                                     degree of p.
+      z mod 264 . We can substitute this equation in the equa-
+                                                                         So let us assume that degree(w) + degree(r) < L. By
+      tion from Fact 1. For any z and any non-zero p, we have
+                                                                     the definition of the modular reduction (Equation 4), we
+      that
+                                                                     have
+      z mod p = ((z ÷ 264 ) ? 264 ⊕ z mod 264 ) mod p                w ? 2L = w ? 2L ÷ p ? p ⊕ w ? 2L mod p.
+                = ((z ÷ 264 ) ? 264 ) mod p ⊕ z mod 264
+                                                                     Let w0 = w ? 2L ÷ p, then
+      by the distributivity of the modular reduction (see Equa-
+                                                                     w ? 2L = w0 ? p ⊕ w ? 2L mod p
+      tion 5).
+                                                                             = w0 ? r ⊕ w0 ? 2L ⊕ w ? 2L mod p.
+Hence the result is shown.
+                                                                     The first L bits of w ? 2L and w0 ? 2L are zero. Therefore,
+     Lemma 6 provides a formula to compute x mod p. Com-
+                                                                     we have
+puting z = (x ÷ 264 ) ? r involves a carry-less multiplication,
+which can be done efficiently on recent Intel and AMD pro-           (w0 ? r) mod 2L = (w ? 2L mod p) mod 2L .
+cessors. The computation of z mod 264 and x mod 264 is
+                                                                     Moreover, the degree of w0 is the same as the degree of
+trivial. It remains to compute ((z ÷ 264 ) ? 264 ) mod p. At
+                                                                     w: degree(w0 ) = degree(w) + degree(2L ) + degree(p) =
+first glance, we still have a modular reduction. However, we
+                                                                     degree(w)+L−L = degree(w). Hence, we have degree(w0 ?
+can easily memoize the result of ((z ÷ 264 ) ? 264 ) mod p.
+                                                                     r) = degree(w)+degree(r) < L. And, of course, degree(w?
+The next lemma shows that there are only 16 distinct values
+                                                                     2L mod p) < L. Thus, we have that
+to memoize (this follows from the low subdegree of p).
+                                                                     w0 ? r = w ? 2L mod p.
+Lemma 7 Given that x has degree less than 128, there are
+only 16 possible values of (z ÷ 264 ) ? 264 mod p, where             Hence, it follows that degree(w ?2L mod p) = degree(w0 ?
+z ≡ (x ÷ 264 ) ? r and r = 24 + 23 + 2 + 1.                          r) = degree(w) + degree(r).
+Proof Indeed, we have that                                               Thus the memoization requires access to only 16 8-bit
+                                                                     values. We enumerate the values in question (w ? 264 mod p
+degree(z) = degree(x) − 64 + degree(r).
+                                                                     for w = 0, 1, . . . , 15) in Table 3. It is convenient that 16 ×
+Because degree(x) ≤ 127, we have that degree(z) ≤ 127−               8 = 128 bits: the entire table fits in a 128-bit word. It means
+64 + 4 = 67. Therefore, we have degree(z ÷ 264 ) ≤ 3.                that if the list of 8-bit values are stored using one byte each,
+Hence, we can represent z ÷ 264 using 4 bits: there are only         the SSSE3 instruction pshufb can be used for fast look-up.
+16 4-bit integers.                                                   (See Algorithm 3.)
+Faster 64-bit universal hashing using carry-less multiplications                                                                         9
+
+Table 3: Values of w ? 264 mod p for w = 0, 1, . . . , 15 given          odd-length inputs with a single zero word. When an input
+p = 264 + 24 + 23 + 3.                                                   string M is made of |M | bytes, we can consider it as string
+                                                                         of 64-bit words s by padding it with up to 7 zero bytes so
+                      w               w ? 264 mod p                      that |M | is divisible by 8.
+            decimal       binary   decimal    binary
+                                                                             On x64 processors with the CLMUL instruction set, a
+               0          00002       0       000000002                  single term ((s2i−1 ⊕ k2i−1 ) ? (s2i ⊕ k2i )) can be com-
+               1          00012      27       000110112
+               2          00102      54       001101102
+                                                                         puted using one 128-bit XOR instructions (pxor in SSE2)
+               3          00112      45       001011012                  and one carry-less multiplication using the pclmulqdq in-
+               4          01002      108      011011002                  struction:
+               5          01012      119      011101112
+               6          01102      90       010110102                   – load (k2i−1 , k2i ) in a 128-bit word,
+               7          01112      65       010000012
+               8          10002      216      110110002
+                                                                          – load (s2i−1 , s2i ) in another 128-bit word,
+               9          10012      195      110000112                   – compute
+               10         10102      238      111011102
+               11         10112      245      111101012
+               12         11002      180      101101002                      (k2i−1 , k2i ) ⊕ (s2i−1 , s2i ) ≡ (k2i−1 ⊕ s2i−1 , k2i ⊕ s2i )
+               13         11012      175      101011112
+               14         11102      130      100000102
+               15         11112      153      100110012
+                                                                            using one pxor instruction,
+                                                                          – compute (k2i−1 ⊕ s2i−1 ) ? (k2i ⊕ s2i ) using one pcl-
+                                                                            mulqdq instruction (result is a 128-bit word).
+Algorithm 3 Carry-less division algorithm
+ 1: input: A 128-bit integer a                                           An additional pxor instruction is required per pair of words
+ 2: output: Carry-less modular reduction a mod p where p = 264 +         to compute CLNH, since we need to aggregate the results.
+    27
+ 3: z ← (a ÷ 264 ) ? r                                                        We have that the family s → CLNH(s) mod p for some
+ 4: w ← z ÷ 264                                                          irreducible p of degree 64 is XOR universal over same-length
+ 5: Look up w ? 264 mod p in Table 3, store result in y                  strings. Indeed, ∆-universality in the field GF (264 ) follows
+ 6: return a mod 264 ⊕ z mod 264 ⊕ y
+                                                                         from Lemma 5. However, recall that ∆-universality in a bi-
+Corresponding C implementation using x64 intrinsics:                     nary finite field (with operations ? and ⊕ for multiplication
+uint64 t      modulo (       m128i a ) {
+                                                                         and addition) is the same as XOR universality — addition
+              m128i r = mm cvtsi64 si128 ( 2 7 ) ;                       is the XOR operation (⊕). It follows that the CLNH family
+              m128i z =                                                  must be 1/264 -almost universal for same-length strings.
+               m m c l m u l e p i 6 4 s i 1 2 8 ( a , r , 0 x01 ) ;          Given an arbitrarily long string of 64-bit words, we can
+              m128i t a b l e = m m s et r e pi 8 ( 0 , 27 , 54 ,
+              45 , 108 ,119 , 90 , 65 , 216 , 195 , 238 ,                divide it up into blocks of 128 words (padding the last block
+              245 ,180 , 175 , 130 , 1 5 3 ) ;                           with zeros if needed). Each block can be hashed using CLNH
+              m128i y =                                                  and the result is 1/264 -almost universal by Lemma 2. If
+               mm shuffle epi8 ( table                                   there is a single block, we can compute CLNH(s) mod p to
+                  , mm srli si128 (z , 8 ) ) ;
+              m 1 2 8 i temp1 = m m x o r s i 1 2 8 ( z , a ) ;          get an XOR universal hash value. Otherwise, the resulting
+            return mm cvtsi128 si64 (                                    128-bit hash values a1 , a2 , . . . , an can then be hashed once
+               m m x o r s i 1 2 8 ( temp1 , y ) ) ;                     more. For this we use a polynomial hash function, k n−1 a1 +
+}                                                                        k n−2 a2 + · · · + an , for some random input k in some fi-
+                                                                         nite field. We choose the field GF (2127 ) and use the ir-
+                                                                         reducible p = 2127 + 2 + 1. We compute such a poly-
+5 CLHASH                                                                 nomial hash function by using Horner’s rule: starting with
+                                                                         r = a1 , compute r ← k ? r ⊕ ai for i = 2, 3, . . . , n. For this
+The CLHASH family resembles the VHASH family — ex-                       purpose, we need carry-less multiplications between pairs
+cept that members work in a binary finite field. The VHASH               of 128-bit integers: we can achieve the desired result with
+family has the 128-bit NH family (see Equation 1), but we                4 pclmulqdq instructions, in addition to some shift and
+instead use the 128-bit CLNH family:                                     XOR operations. The multiplication generates a 256-bit in-
+                                                                         teger x that must be reduced. However, it is not necessary
+                l/2
+                M                                                       to reduce it to a 127-bit integer (which would be the re-
+CLNH(s) =             (s2i−1 ⊕ k2i−1 ) ? (s2i ⊕ k2i )              (7)
+                                                                         sult if we applied a modular reduction by 2127 + 2 + 1).
+                i=1
+                                                                         It is enough to reduce it to a 128-bit integer x0 such that
+where the si and ki ’s are 64-bit integers and l is the length           x0 mod (2127 + 2 + 1) = x mod (2127 + 2 + 1). We get the
+of the string s. The formula assumes that l is even: we pad              desired result by setting x0 equal to the lazy modular reduc-
+10                                                                                                            Daniel Lemire, Owen Kaser
+
+
+tion [8] x mod lazy (2127 + 2 + 1) defined as                     Table 4: Comparison between the two 64-bit hash families
+                                                                  VHASH and CLHASH
+x mod lazy (2127 + 2 + 1)
+ ≡ x mod ((2127 + 2 + 1) ? 2)                                                                 universality               input length
+                                                           (8)          VHASH            1
+                                                                                            -almost ∆-universal          1–259 bytes
+ = x mod (2128 + 4 + 2)                                                                 261
+
+ = (x mod 2128 ) ⊕ ((x ÷ 2128 ) ? 4 ⊕ (x ÷ 2128 ) ? 2).                                     XOR universal               1–1024 bytes
+                                                                        CLHASH
+                                                                                     2.004
+                                                                                      264
+                                                                                           -almost XOR universal       1025–264 bytes
+It is computationally convenient to assume that degree(x) ≤
+256 − 2 so that degree((x ÷ 2128 ) ? 4) ≤ 128. We can
+achieve this degree bound by picking the polynomial coeffi-
+cient k to have degree(k) ≤ 128 − 2. The resulting polyno-        Algorithm 4 CLHASH algorithm: all operations are carry-
+mial hash family is (n−1)/2126 -almost universal for strings      less, as per § 4.3. The  operator indicates a left shift: O 
+having the same length where n is the number of 128-word          33 is the value O divided by 233 .
+blocks (d|M |/1024e where |M | is the string length in bytes),    Require: 128 randomly picked 64-bit integers k1 , k2 , . . . , k128 defin-
+whether we use the actual modular or the lazy modular re-             ing a 128-bit CLNH hash function (see Equation 7) over inputs of
+duction.                                                              length 128
+                                                                  Require: k, a randomly picked 126-bit integer
+     It remains to reduce the final output O (stored in a 128-    Require: k0 , a randomly picked 128-bit integer
+bit word) to a 64-bit hash value. For this purpose, we can use    Require: k00 , a randomly picked 64-bit integer
+s → CLNH(s) mod p with p = 264 + 27 (see § 4.4), and               1: input: string M made of |M | bytes
+where k 00 is a random 64-bit integer. We treat O as a string      2: if |M | ≤ 1024 then
+                                                                   3:     O ← CLNH(M ) ⊕ (k00 ? |M |) mod (264 + 27)
+containing two 64-bit words. Once more, the reduction is           4:     return O
+XOR universal by an application of Lemma 5. Thus, we               5: else
+have the composition of three hash functions with collision        6:     Let n be the number of 128-word blocks (d|M |/1024e).
+probabilities 1/264 , (n − 1)/2126 and 1/264 . It is reasonable    7:     Let Mi be the substring of M from index 128i to 128i + 127
+                                                                          inclusively, padding with zeros if needed.
+to bound the string length by 264 bytes: n ≤ 264 /1024 =           8:     Hash each Mi using the CLNH function, labelling the result
+254 . We have that 2/264 + (254 − 1)/2126 < 2.004/264 .                   128-bit results ai for i = 1, . . . , n. That is, ai ← CLNH(Mi ).
+Thus, for same-length strings, we have 2.004/264 -almost
+XOR universality.                                                  9:     Hash the resulting ai with a polynomial hash function and store
+                                                                          the value in a 128-bit hash value O: O ← a1 ? kn−1 ⊕ · · · ⊕
+     We further ensure that the result is XOR-universal over              an mod lazy (2127 + 2 + 1) (see Equation 8).
+all strings: P (h(s) = h(s0 ) ⊕ c) ≤ 1/264 irrespective of        10:     Hash the 128-bit value O, treating it as two 64-bit words
+whether |s| = |s0 |. By Lemma 3, it suffices to XOR the                   (O1 , O2 ), down to a 64-bit CLNH hash value (with the addi-
+                                                                          tion of a term accounting for the length |M | in bytes)
+hash value with k 00 ? |M | mod p where k 00 is a random 64-
+bit integer and |M | is the string length as a 64-bit integer,            z ← ((O1 ⊕ k10 ) ? (O2 ⊕ k20 ) ⊕ (k00 ? |M |) mod (264 + 27).
+and where p = 264 + 27. The XOR universality follows for
+                                                                        Values k10 and k20 are the two 64-bit words contained in k0 .
+strings having different lengths by Lemma 4 and the equiv-        11:   return the 64-bit hash value z
+alence between XOR-universality and ∆-universality in bi-         12: end if
+nary finite fields. As a practical matter, since the final step
+involves the same modular reduction twice in the expression
+(CLNH(s) mod p) ⊕ ((k 00 ? |M |) mod p), we can simplify          5.1 Random Bits
+it to (CLNH(s) ⊕ (k 00 ? |M |)) mod p, thus avoiding an un-
+necessary modular reduction.                                      One might wonder whether using 1 kB of random bits is nec-
+     Our analysis is summarized by following lemma.               essary. For strings of no more than 1 kB, CLHASH is XOR
+                                                                  universal. Stinson showed that in such cases, we need the
+Lemma 9 CLHASH is 2.004/264 -almost XOR universal                 number of random bits to match the input length [37]. That
+over strings of up to 264 bytes. Moreover, it is XOR universal    is, we need at least 1 kB to achieve XOR universality over
+over strings of no more than 1 kB.                                strings having 1 kB. Hence, CLHASH makes nearly opti-
+                                                                  mal use of the random bits.
+    The bound of the collision probability of CLHASH for
+long strings (2.004/264 ) is 4 times lower than the corre-
+sponding VHASH collision probability (1/261 ). For short          6 Statistical Validation
+strings (1 kB or less), CLHASH has a bound that is 8 times
+lower. See Table 4 for a comparison. CLHASH is given by           Classically, hash functions have been deterministic: fixed
+Algorithm 4.                                                      maps h from U to V , where |U |  |V | and thus collisions
+Faster 64-bit universal hashing using carry-less multiplications                                                                     11
+
+
+are inevitable. Hash functions might be assessed according          test. We can illustrate the failure. Consider that for short
+to whether their outputs are distributed evenly, i.e., whether      fixed-length strings (8 bytes or less), CLHASH is effec-
+|h−1 (x)| ≈ |h−1 (y)| for two distinct x, y ∈ V . However,          tively equivalent to a hash function of the form h(x) =
+in practice, the actual input is likely to consist of clusters of   a ? x mod p, where p is irreducible. Such hash functions
+nearly identical keys [23]: for instance, symbol table entries      form an XOR universal family. They also satisfy the iden-
+such as temp1, temp2, temp3 are to be expected, or a col-           tity h(x ⊕ y) ⊕ h(x) = h(y). It follows that no matter
+lection of measured data values is likely to contain clusters       what value x takes, modifying the same ith bit modifies the
+of similar numeric values. Appending an extra character to          resulting hash value in a consistent manner (according to
+the end of an input string, or flipping a bit in an input num-      h(2i+1 )). We can still expect that changing a bit in the input
+ber, should (usually) result in a different hash value. A col-      changes half the bits of the hash value on average. However,
+lection of desirable properties can be defined, and then hash       SMHasher checks that h(x ⊕ 2i+1 ) differs from h(x) in any
+functions rated on their performance on data that is meant to       given bit about half the time over many randomly chosen
+represent realistic cases.                                          inputs x. Since h(x ⊕ 2i+1 ) ⊕ h(x) is independent from x
+    One common use of randomized hashing is to avoid DoS            for short inputs with CLHASH, any given bit is either al-
+(denial-of-service) attacks when an adversary controls the          ways flipped (for all x) or never. Hence, CLHASH fails the
+series of keys submitted to a hash table. In this setting, prior    SMHasher test.
+to the use of a hash table, a random selection of hash func-            Thankfully, we can slightly modify CLHASH so that all
+tion is made from the family. The (deterministic) function is       tests pass if we so desire. It suffices to apply an additional
+then used, at least until the number of collisions is observed      bit mixing function taken from MurmurHash [1] to the result
+to be too high. A high number of collisions presumably in-          of CLHASH. The function consists of two multiplications
+dicates the hash table needs to be resized, although it could       and three shifts over 64-bit integers:
+indicate that an undesirable member of the family had been
+chosen. Those contemplating switching from deterministic            x ← x ⊕ (x  33),
+hash tables to randomized hash tables would like to know            x ← x × 18397679294719823053,
+that typical performance would not degrade much. Yet, as
+carefully tuned deterministic functions can sometimes out-          x ← x ⊕ (x  33),
+perform random assignments for typical inputs [23], some            x ← x × 14181476777654086739,
+degradation might need to be tolerated. Thus, it is worth           x ← x ⊕ (x  33).
+checking a few randomly chosen members of our CLHASH
+families against statistical tests.                                 Each step is a bijection: e.g., multiplication by an odd inte-
+                                                                    ger is always invertible. A bijection does not affect collision
+                                                                    bounds.
+6.1 SMHasher
+
+The SMHasher program [1] includes a variety of quality
+tests on a number of minimally randomized hashing algo-             7 Speed Experiments
+rithms, for which we have weak or no known theoretical
+guarantees. It runs several statistical tests, such as the fol-     We implemented a performance benchmark in C and com-
+lowing.                                                             piled our software using GNU GCC 4.8 with the -O2 flag.
+                                                                    The benchmark program ran on a Linux server with an In-
+ – Given a randomly generated input, changing a few bits
+                                                                    tel i7-4770 processor running at 3.4 GHz. This CPU has
+   at random should not generate a collision.
+                                                                    32 kB of L1 cache, 256 kB of L2 cache per core, and 8 MB
+ – Among all inputs containing only two non-zero bytes
+                                                                    of L3 cache shared by all cores. The machine has 32 GB
+   (and having a fixed length in [4, 20]), collisions should
+                                                                    of RAM (DDR3-1600 with double-channel). We disabled
+   be unlikely (called the TwoBytes test).
+                                                                    Turbo Boost and set the processor to run only at its high-
+ – Changing a single bit in the input should change half the
+                                                                    est clock speed, effectively disabling the processor’s power
+   bits of the hash value, on average [13] (sometimes called
+                                                                    management. All timings are done using the time-stamp coun-
+   the avalanche effect).
+                                                                    ter (rdtsc) instruction [34]. Although all our software5 is
+Some of these tests are demanding: e.g., CityHash [35] fails        single-threaded, we disabled hyper-threading as well.
+the TwoBytes test.
+                                                                       5 Our benchmark software is made freely available under a
+    We added both VHASH and CLHASH to SMHasher
+                                                                    liberal open-source license (https://github.com/lemire/
+and used the Mersenne Twister (i.e., MT19937) to gener-
+                                                                    StronglyUniversalStringHashing), and it includes the
+ate the random bits [28]. We find that VHASH passes all             modified SMHasher as well as all the necessary software to reproduce
+tests. However, CLHASH fails one of them: the avalanche             our results.
+12                                                                                                        Daniel Lemire, Owen Kaser
+
+
+   Our experiments compare implementations of CLHASH,              Table 5: A comparison of estimated CPU cycles per byte
+VHASH, SipHash [3], GHASH [17] and Google’s City-                  on a Haswell Intel processor using 4 kB inputs. All schemes
+Hash.                                                              generate 64-bit hash values, except that GHASH generates
+                                                                   128-bit hash values.
+ – We implemented CLHASH using Intel intrinsics. As
+   described in § 5, we use various single instruction, mul-                       scheme    64 B input    4 kB input
+   tiple data (SIMD) instructions (e.g., SSE2, SSE3 and                           VHASH         1.0           0.26
+   SSSE3) in addition to the CLMUL instruction set. The                           CLHASH        0.45          0.16
+                                                                                  CityHash      0.48          0.23
+   random bits are stored consecutively in memory, aligned
+                                                                                   SipHash      3.1            2.1
+   with a cache line (64 bytes).                                                   GHASH        2.3           0.93
+ – For VHASH, we used the authors’ 64-bit implementa-
+   tion [25], which is optimized with inline assembly. It
+   stores the random bits in a C struct, and we do not             random-number generator. For any given input length, we
+   include the overhead of constructing this struct in the         repeatly hash the strings so that, in total, 40 million input
+   timings. The authors assume that the input length is di-        words have been processed.
+   visible by 16 bytes, or padded with zeros to the nearest            As a first test, we hashed 64 B and 4 kB inputs (see Ta-
+   16-byte boundary. In some instances, we would need to           ble 5) and we report the number of cycles spent to hash one
+   copy part of the input to a new location prior to hash-         byte: for 4 kB inputs, we got 0.26 for VHASH,6 0.16 for
+   ing the content to satisfy the requirement. Instead, we         CLHASH, 0.23 for C ITY H ASH and 0.93 for GHASH. That
+   decided to optimistically hash the data in-place with-          is, CLHASH is over 60 % faster than VHASH and almost
+   out copy. Thus, we slightly overestimate the speed of           45 % faster than CityHash. Moreover, SipHash is an order
+   the VHASH implementation — especially on shorter                of magnitude slower. Considering that it produces 128-bit
+   strings.                                                        hash values, the PCMUL-accelerated GHASH offers good
+ – We used the reference C implementation of SipHash [4].          performance: it uses less than one cycle per input byte for
+   SipHash is a fast family of 64-bit pseudorandom hash            long inputs.
+   functions adopted, among others, by the Python language.            Of course, the relative speeds depend on the length of
+ – CityHash is commonly used in applications where high            the input. In Fig. 1, we vary the input length from 8 bytes
+   speed is desirable [27, 15]. We wrote a simple C port of        to 8 kB. We see that the results for input lengths of 4 kB
+   Google’s CityHash (version 1.1.1) [35]. Specifically, we        are representative. Mostly, we have that CLHASH is 60 %
+   benchmarked the CityHash64WithSeed function.                    faster than VHASH and 40 % faster than CityHash. How-
+ – Using Gueron and Kounavis’ [17] code, we implemented            ever, CityHash and CLHASH have similar performance for
+   a fast version of GHASH accelerated with the CLMUL              small inputs (32 bytes or less) whereas VHASH fares poorly
+   instruction set. GHASH is a polynomial hash function            over these same small inputs. We find that SipHash is not
+   over GF (2128 ) using the irreducible polynomial x128 +         competitive in these tests.
+   x7 + x2 + x + 1: h(x1 , x2 , . . . , xn ) = an x1 + an−1 x2 +
+   . . . + axn for some 128-bit key a. To accelerate com-
+   putations, Gueron and Kounavis replace the traditional          7.2 Analysis
+   Horner’s rule with an extended version that processes
+   input words four at a time: starting with r = 0 and pre-        From an algorithmic point of view, VHASH and CLHASH
+   computed powers a2 , a3 , a4 , compute r ← a4 (r + xi ) +       are similar. Moreover, VHASH uses a conventional multi-
+   a3 xi+1 + a2 xi+2 + axi+3 for i = 1, 4, . . . , 4bm/4c − 3.     plication operation that has lower latency and higher through-
+   We complete the computation with the usual Horner’s             put than CLHASH. And the VHASH implementation re-
+   rule when the number of input words is not divisible            lies on hand-tuned assembly code. Yet CLHASH is 60 %
+   by four. In contrast with other hash functions, GHASH           faster.
+   generates 128-bit hash values.                                      For long strings, the bulk of the VHASH computation
+                                                                   is spent computing the NH function. When computing NH,
+   VHASH, CLHASH and GHASH require random bits.                    each pair of input words (or 16 bytes) uses the following in-
+The time spent by the random-number generator is excluded          structions: one mulq, three adds and one adc. Both mulq
+from the timings.                                                  and adc generate two micro-operations (µops) each, so with-
+                                                                   out counting register loading operations, we need at least
+                                                                   3 + 2 × 2 = 7 µops to process two words [16]. Yet Haswell
+7.1 Results
+                                                                   processors, like other recent Intel processors, are apparently
+We find that the hashing speed is not sensitive to the con-         6   For comparison, Dai and Krovetz reported that VHASH used
+tent of the inputs — thus we generated the inputs using a          0.6 cycles per byte on an Intel Core 2 processor (Merom) [25].
+Faster 64-bit universal hashing using carry-less multiplications                                                                                                                            13
+
+
+
+                            ���                                                                                               ��
+                                                                      �������                                                                                     ������������
+                                                                       �����                                                ����                                 ���������������
+                             ��
+
+
+
+
+                                                                                           ������������������������������
+                                                                       �����                                                ����
+                                                                      ��������
+ ���������������������
+
+
+
+
+                             ��                                                                                             ����
+                                                                      ������
+                                                                                                                            ����
+                             ��                                                                                               ��
+                             ��                                                                                             ����
+                                                                                                                            ����
+                           ����                                                                                             ����
+                                                                                                                            ����
+                          �����
+                                                                                                                              ��
+                         ������                                                                                             ����
+                                  ���     ���          ����      �����    �����   ������                                           ���        ���         ����        �����    �����   ������
+                                                �����������������������                                                                             �����������������������
+
+                                        (a) Cycles per input byte                                                                        (b) Ratios of cycles per input byte
+
+Fig. 1: Performance comparison for various input lengths. For large inputs, CLHASH is faster, followed in order of decreas-
+ing speed by CityHash, VHASH, GHASH and SipHash.
+
+
+limited to a sustained execution of no more than 4 µops per                                                             pclmulqdq instruction [38]. Bos et al. [9] used the CLMUL
+cycle. Thus we need at least 7/4 cycles for every 16 bytes.                                                             instruction set for 256-bit hash functions on the Westmere
+That is, VHASH needs at least 0.11 cycles per byte. Be-                                                                 microarchitecture. Elliptic curve cryptography benefits from
+cause CLHASH runs at 0.16 cycles per byte on long strings                                                               the pclmulqdq instruction [32, 33, 39]. Bluhm and Gueron
+(see Table 5), we have that no implementation of VHASH                                                                  pointed out that the benefits are increased on the Haswell
+could surpass our implementation of CLHASH by more                                                                      microarchitecture due to the higher throughput and lower
+than 35 %. Simply put, VHASH requires too many µops.                                                                    latency of the instruction [8].
+     CLHASH is not similarly limited. For each pair of in-                                                                  In previous work, we used the pclmulqdq instruction
+put 64-bit words, CLNH uses two 128-bit XOR instructions                                                                for fast 32-bit random hashing on the Sandy Bridge and
+(pxor) and one pclmulqdq instruction. Each pxor uses                                                                    Bulldozer architectures [26]. However, our results were dis-
+one (fused) µop whereas the pclmulqdq instruction uses                                                                  appointing, due in part to the low throughput of the instruc-
+two µops for a total of 4 µops, versus the 7 µops absolutely                                                            tion on these older microarchitectures.
+needed by VHASH. Thus, the number of µops dispatched
+per cycle is less likely to be a bottleneck for CLHASH.
+However, the pclmulqdq instruction has a throughput of
+                                                                                                                        9 Conclusion
+only two cycles per instruction. Thus, we can only process
+one pair of 64-bit words every two cycles, for a speed of                                                               The pclmulqdq instruction on recent Intel processors en-
+2/16 = 0.125 cycles per byte. The measured speed (0.16 cy-                                                              ables a fast and almost universal 64-bit hashing family (CL-
+cles per byte) is about 35 % higher than this lower bound                                                               HASH). In terms of raw speed, the hash functions from this
+according to Table 5. This suggests that our implementation                                                             family can surpass some of the fastest 64-bit hash func-
+of CLHASH is nearly optimal — at least for long strings.                                                                tions on x64 processors (VHASH and CityHash). More-
+We verified our analysis with the IACA code analyser [19].                                                              over, CLHASH offers superior bounds on the collision prob-
+It reports that VHASH is indeed limited by the number of                                                                ability. CLHASH makes optimal use of the random bits, in
+µops that can be dispatched per cycle, unlike CLHASH.                                                                   the sense that it offers XOR universality for short strings
+                                                                                                                        (less than 1 kB).
+8 Related Work                                                                                                              We believe that CLHASH might be suitable for many
+                                                                                                                        common purposes. The VHASH family has been proposed
+The work that lead to the design of the pclmulqdq instruc-                                                              for cryptographic applications, and specifically message au-
+tion by Gueron and Kounavis [17] introduced efficient algo-                                                             thentication (VMAC): similar applications are possible for
+rithms using this instruction, e.g., an algorithm for 128-bit                                                           CLHASH. Future work should investigate these applica-
+modular reduction in Galois Counter Mode. Since then, the                                                               tions.
+pclmulqdq instruction has been used to speed up crypto-                                                                     Other microprocessor architectures also support fast carry-
+graphic applications. Su and Fan find that the Karatsuba for-                                                           less multiplication, sometimes referring to it as polynomial
+mula becomes especially efficient for software implemen-                                                                multiplication (e.g., ARM [2] and Power [20]). Future work
+tations of multiplication in binary finite fields due to the                                                            might review the performance of CLHASH on these archi-
+14                                                                                                                    Daniel Lemire, Owen Kaser
+
+
+tectures. It might also consider the acceleration of alternative               the 10th ACM International on Conference on Emerging Net-
+hash families such as those based on Toeplitz matrices [37].                   working Experiments and Technologies, CoNEXT ’14, pp. 75–
+                                                                               88. ACM, New York, NY, USA (2014). DOI 10.1145/2674005.
+                                                                               2674994
+Acknowledgements This work is supported by the National Research           16. Fog, A.: Instruction tables: Lists of instruction latencies, through-
+Council of Canada, under grant 26143.                                          puts and micro-operation breakdowns for Intel, AMD and VIA
+                                                                               CPUs.      Tech. rep., Copenhagen University College of En-
+                                                                               gineering (2014). http://www.agner.org/optimize/
+References                                                                     instruction_tables.pdf [last checked March 2015]
+                                                                           17. Gueron, S., Kounavis, M.: Efficient implementation of the Ga-
+                                                                               lois Counter Mode using a carry-less multiplier and a fast reduc-
+ 1. Appleby, A.: SMHasher & MurmurHash. http://code.
+                                                                               tion algorithm. Information Processing Letters 110(14), 549–553
+    google.com/p/smhasher [last checked March 2015] (2012)
+                                                                               (2010). DOI 10.1016/j.ipl.2010.04.011
+ 2. ARM Limited: ARMv8 Architecture Reference Manual.
+                                                                           18. Halevi, S., Krawczyk, H.: MMH: Software message authentica-
+    http://infocenter.arm.com/help/topic/com.
+                                                                               tion in the Gbit/second rates. In: E. Biham (ed.) Fast Soft-
+    arm.doc.subset.architecture.reference/                         [last
+                                                                               ware Encryption, Lecture Notes in Computer Science, vol. 1267,
+    checked March 2015] (2014)
+                                                                               pp. 172–189. Springer, Berlin Heidelberg (1997). DOI 10.1007/
+ 3. Aumasson, J.P., Bernstein, D.J.: SipHash: A fast short-input PRF.
+                                                                               BFb0052345
+    In: S. Galbraith, M. Nandi (eds.) Progress in Cryptology - IN-
+                                                                           19. Intel Corporation: Intel IACA tool: A Static Code Analyser.
+    DOCRYPT 2012, Lecture Notes in Computer Science, vol. 7668,
+                                                                               https://software.intel.com/en-us/articles/
+    pp. 489–508. Springer, Berlin Heidelberg (2012). DOI 10.1007/
+                                                                               intel-architecture-code-analyzer [last checked
+    978-3-642-34931-7 28
+                                                                               March 2015] (2012)
+ 4. Aumasson, J.P., Bernstein, D.J.: SipHash: High-speed pseudo-
+    random function (reference code) (2014). https://github.               20. Intel Corporation: Power ISA Version 2.07.                  https:
+    com/veorq/SipHash [last checked November 2014]                             //www.power.org/wp-content/uploads/2013/
+ 5. Barrett, P.: Implementing the Rivest Shamir and Adleman pub-               05/PowerISA_V2.07_PUBLIC.pdf [last checked March
+    lic key encryption algorithm on a standard digital signal pro-             2015] (2013)
+    cessor. In: A.M. Odlyzko (ed.) Advances in Cryptology —                21. Intel Corporation: Power ISA Version 2.07.                  https:
+    CRYPTO’ 86, Lecture Notes in Computer Science, vol. 263, pp.               //software.intel.com/sites/landingpage/
+    311–323. Springer, Berlin Heidelberg (1987). DOI 10.1007/                  IntrinsicsGuide/ [last checked March 2015] (2014)
+    3-540-47721-7 24                                                       22. Knežević, M., Sakiyama, K., Fan, J., Verbauwhede, I.: Modu-
+ 6. Bernstein, D.J.: The Poly1305-AES Message-Authentication                   lar reduction in GF (2n ) without pre-computational phase. In:
+    Code. In: Fast Software Encryption, Lecture Notes in Computer              J. von zur Gathen, J.L. Imaña, c.K. Koç (eds.) Arithmetic of
+    Science, vol. 3557, pp. 32–49. Springer, Berlin Heidelberg (2005).         Finite Fields, Lecture Notes in Computer Science, vol. 5130,
+    DOI 10.1007/11502760 3                                                     pp. 77–87. Springer, Berlin Heidelberg (2008). DOI 10.1007/
+ 7. Black, J., Halevi, S., Krawczyk, H., Krovetz, T., Rogaway, P.:             978-3-540-69499-1 7
+    UMAC: Fast and secure message authentication. In: M. Wiener            23. Knuth, D.E.: Searching and Sorting, The Art of Computer Pro-
+    (ed.) Advances in Cryptology — CRYPTO’ 99, Lecture Notes in                gramming, vol. 3. Addison-Wesley, Reading, Massachusetts
+    Computer Science, vol. 1666, pp. 216–233. Springer, Berlin Hei-            (1997)
+    delberg (1999). DOI 10.1007/3-540-48405-1 14                           24. Krovetz, T.: Message authentication on 64-bit architectures. In:
+ 8. Bluhm, M., Gueron, S.: Fast software implementation of binary              Selected Areas in Cryptography, Lecture Notes in Computer Sci-
+    elliptic curve cryptography. Tech. rep., Cryptology ePrint Archive         ence, vol. 4356, pp. 327–341. Springer, Berlin Heidelberg (2007).
+    (2013)                                                                     DOI 10.1007/978-3-540-74462-7 23
+ 9. Bos, J.W., Özen, O., Stam, M.: Efficient hashing using the AES in-    25. Krovetz, T., Dai, W.: VMAC and VHASH Implementation.
+    struction set. In: Proceedings of the 13th International Conference        http://fastcrypto.org/vmac/ [last checked March
+    on Cryptographic Hardware and Embedded Systems, CHES’11,                   2015] (2007)
+    pp. 507–522. Springer-Verlag, Berlin, Heidelberg (2011)                26. Lemire, D., Kaser, O.: Strongly universal string hashing is fast.
+10. Carter, J.L., Wegman, M.N.: Universal classes of hash functions.           Comput. J. 57(11), 1624–1638 (2014). DOI 10.1093/comjnl/
+    J. Comput. System Sci. 18(2), 143–154 (1979). DOI 10.1016/                 bxt070
+    0022-0000(79)90044-8                                                   27. Lim, H., Han, D., Andersen, D.G., Kaminsky, M.: Mica: A holis-
+11. Cormen, T.H., Leiserson, C.E., Rivest, R.L., Stein, C.: Introduc-          tic approach to fast in-memory key-value storage. In: Proceedings
+    tion to Algorithms, Third Edition, 3rd edn. The MIT Press, Cam-            of the 11th USENIX Conference on Networked Systems Design
+    bridge, MA (2009)                                                          and Implementation, NSDI’14, pp. 429–444. USENIX Associa-
+12. Dai, W., Krovetz, T.: VHASH security. Tech. Rep. 338, IACR                 tion, Berkeley, CA, USA (2014)
+    Cryptology ePrint Archive (2007)                                       28. Matsumoto, M., Nishimura, T.: Mersenne Twister: A 623-
+13. Estébanez, C., Hernandez-Castro, J.C., Ribagorda, A., Isasi, P.:          dimensionally equidistributed uniform pseudo-random number
+    Evolving hash functions by means of genetic programming. In:               generator. ACM Trans. Model. Comput. Simul. 8(1), 3–30 (1998).
+    Proceedings of the 8th annual conference on Genetic and evolu-             DOI 10.1145/272991.272995
+    tionary computation, pp. 1861–1862. ACM, New York, NY, USA             29. Motzkin, T.S.: Evaluation of polynomials and evaluation of ratio-
+    (2006)                                                                     nal functions. Bull. Amer. Math. Soc. 61(9), 163 (1955)
+14. Etzel, M., Patel, S., Ramzan, Z.: Square Hash: Fast message au-        30. Mullen, G.L., Panario, D.: Handbook of Finite Fields, 1st edn.
+    thentication via optimized universal hash functions. In: M. Wiener         Chapman & Hall/CRC, London (2013)
+    (ed.) Advances in Cryptology — CRYPTO’ 99, Lecture Notes in            31. Nguyen, L.H., Roscoe, A.W.: New combinatorial bounds for uni-
+    Computer Science, vol. 1666, pp. 234–251. Springer, Berlin Hei-            versal hash functions. Tech. Rep. 153, Cryptology ePrint Archive
+    delberg (1999). DOI 10.1007/3-540-48405-1 15                               (2009)
+15. Fan, B., Andersen, D.G., Kaminsky, M., Mitzenmacher, M.D.:             32. Oliveira, T., Aranha, D.F., López, J., Rodrı́guez-Henrı́quez, F.:
+    Cuckoo filter: Practically better than Bloom. In: Proceedings of           Fast point multiplication algorithms for binary elliptic curves with
+Faster 64-bit universal hashing using carry-less multiplications                                                                             15
+
+
+    and without precomputation. In: A. Joux, A. Youssef (eds.) Se-           BF01388651
+    lected Areas in Cryptography – SAC 2014, Lecture Notes in            37. Stinson, D.R.: On the connections between universal hashing,
+    Computer Science, pp. 324–344. Springer International Publish-           combinatorial designs and error-correcting codes. Congr. Numer.
+    ing (2014). DOI 10.1007/978-3-319-13051-4 20                             114, 7–28 (1996)
+33. Oliveira, T., López, J., Aranha, D.F., Rodrı́guez-Henrı́quez, F.:   38. Su, C., Fan, H.: Impact of Intel’s new instruction sets on software
+    Two is the fastest prime: lambda coordinates for binary ellip-           implementation of GF (2)[x] multiplication. Information Process-
+    tic curves. J. Cryptogr. Eng. 4(1), 3–17 (2014). DOI 10.1007/            ing Letters 112(12), 497–502 (2012). DOI 10.1016/j.ipl.2012.03.
+    s13389-013-0069-z                                                        012
+34. Paoloni, G.: How to Benchmark Code Execution Times on Intel          39. Taverne, J., Faz-Hernández, A., Aranha, D.F., Rodrı́guez-
+    IA-32 and IA-64 Instruction Set Architectures. Intel Corporation,        Henrı́quez, F., Hankerson, D., López, J.: Speeding scalar multi-
+    Santa Clara, CA (2010)                                                   plication over binary elliptic curves using the new carry-less mul-
+35. Pike, G., Alakuijala, J.: The CityHash family of hash functions          tiplication instruction. J. Cryptogr. Eng. 1(3), 187–199 (2011).
+    (2011). https://code.google.com/p/cityhash/ [last                        DOI 10.1007/s13389-011-0017-8
+    checked March 2015]
+36. Stinson, D.R.: Universal hashing and authentication codes.
+    Des. Codes Cryptogr. 4(4), 369–380 (1994). DOI 10.1007/
+

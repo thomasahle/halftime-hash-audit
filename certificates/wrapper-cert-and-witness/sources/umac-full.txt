@@ -1,0 +1,1469 @@
+The proceedings version of this paper appears in Advances in Cryptology—CRYPTO ’99 [7]. This
+is the full version. It is available from www.cs.ucdavis.edu/~rogaway/umac/
+
+
+
+
+              UMAC: Fast and Secure Message Authentication
+
+
+   J. Black ∗        S. Halevi †         H. Krawczyk ‡            T. Krovetz ∗           P. Rogaway ∗
+
+                                              August 4, 1999
+
+
+
+                                                 Abstract
+      We describe a message authentication algorithm, UMAC, which authenticates messages (in
+      software, on contemporary machines) roughly an order of magnitude faster than current practice
+      (e.g., HMAC-SHA1), and about twice as fast as previously reported times for the universal hash-
+      function family MMH. To achieve such speeds, UMAC uses a new universal hash-function family,
+      NH, and a design which allows eﬀective exploitation of SIMD parallelism. The “cryptographic”
+      work of UMAC is done using standard primitives of the user’s choice, such as a block cipher
+      or cryptographic hash function; no new heuristic primitives are developed here. Instead, the
+      security of UMAC is rigorously proven, in the sense of giving exact and quantitatively strong
+      results which demonstrate an inability to forge UMAC-authenticated messages assuming an
+      inability to break the underlying cryptographic primitive. Unlike conventional, inherently serial
+      MACs, UMAC is parallelizable, and will have ever-faster implementation speeds as machines
+      oﬀer up increasing amounts of parallelism. We envision UMAC as a practical algorithm for
+      next-generation message authentication.
+
+
+
+
+      Key words: Fast software cryptography, Message authentication codes, Provable security,
+      Universal hashing.
+
+
+
+
+    ∗
+       Dept. of Computer Science, University of California, Davis, California, 95616, USA. E-mail: {blackj,
+krovetz, rogaway}@cs.ucdavis.edu WWW: www.cs.ucdavis.edu/~{blackj, krovetz, rogaway}/
+    †
+      IBM T.J. Watson Research Center, Yorktown Heights, New York, 10598, USA. E-mail: shaih@watson.ibm.com
+    ‡
+       Department of Electrical Engineering, Technion, Haifa, Israel, and IBM T.J. Watson Research Center, New
+York, USA. Email: hugo@ee.technion.ac.il
+Contents
+1 Introduction                                                                                          1
+  1.1 Universal-Hashing Approach . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .        1
+  1.2 Our Contributions . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .       2
+  1.3 Related Work . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .      4
+
+2 Overview of UMAC                                                                                      5
+  2.1 An Illustrative Special Case . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .      5
+  2.2 UMAC Parameters . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .         6
+
+3 UMAC Performance                                                                                      7
+
+4 The NH Hash Family                                                                                   10
+  4.1 Preliminaries . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .    10
+  4.2 Deﬁnition of NH . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .      10
+  4.3 Analysis . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .   11
+  4.4 The Signed Construction: NHS . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .         13
+
+5 Reducing the Collision Probability: Toeplitz Extensions                                              15
+  5.1 The Toeplitz Approach . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .      15
+  5.2 The Unsigned Case . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .      15
+  5.3 The Signed Case . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .      17
+  5.4 Shorter Keys: T2 . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .     17
+
+6 Arbitrary-Length Messages: Padding, Concatenation, Length Annotation                                 18
+
+7 Final Extensions: Stride, Endianness, Key Shifts                                                     19
+
+8 From Hash to MAC                                                                                     20
+  8.1 Security Deﬁnitions . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .    20
+  8.2 Deﬁnition of the PRF(HASH, Nonce) Construction . . . . . . . . . . . . . . . . . . .             21
+  8.3 Discussion . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .   23
+  8.4 Realizing the PRF . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .      24
+
+9 Directions                                                                                           25
+
+References                                                                                             25
+1     Introduction
+This paper describes a new message authentication code, UMAC, and the theory that lies behind
+it. UMAC has been designed with two main goals in mind:
+    • Extreme speed. We have aimed to create the fastest MAC ever described, and by a wide
+      margin. We are speaking of speed with respect to software implementations on contemporary
+      general-purpose computers.
+    • Provable security. We insist that the MAC be demonstrably secure, by virtue of proofs
+      carried out in the sense of provable-security cryptography. Namely, if the underlying cryp-
+      tographic primitives are secure (we use pseudorandom functions) then the MAC is secure,
+      too.
+There were of course other goals, avoiding excessive conceptual and implementation complexity
+being principal among them.
+    UMAC is certainly fast. On our 350 MHz Pentium II PC, one version of UMAC (where the ad-
+versary has 2−60 chance of forgery) achieves peak-performance of 2.9 Gbits/sec (0.98 cycles/byte).
+Another version of UMAC (with 2−30 chance of forgery) achieves peak performance of 5.6 Gbits/sec
+(0.51 cycles/byte). For comparison, our SHA-1 implementation runs at 12.6 cycles/byte. Note
+that SHA-1 speed upper bounds the speed of HMAC-SHA1 [3], a software-oriented MAC represen-
+tative of the speeds achieved by current practice. The previous speed champion among proposed
+universal hash functions (the main ingredient for making a fast MAC; see below) was MMH [14],
+which runs at about 1.2 cycles/byte (for 2−30 chance of forgery) under its originally envisioned
+implementation.
+    How has it been possible to achieve these speeds? Interestingly, we have done this with the help
+of our second goal, provable security. We use the well-known universal-hashing approach to message
+authentication, introduced by [27], making innovations in its realization. Let us now review this
+approach and its advantages, and then describe what we have done to make it ﬂy.
+
+1.1    Universal-Hashing Approach
+Universal Hashing And Authentication. Our starting point is a universal hash-function fam-
+ily [9]. (Indeed the “U” in UMAC is meant to suggest the central role that universal hash-function
+families play in this MAC.) Remember that a set of hash functions is said to be “-universal” if
+for any pair of distinct messages, the probability that they collide (hash to the same value) is at
+most . The probability is over the random choice of hash function.
+     As described in [27], a universal hash-function family can be used to build a secure MAC. The
+parties share two things: a secret and randomly chosen hash function from the universal hash-
+function family, and a secret encryption key. A message is authenticated by hashing it with the
+shared hash function and then encrypting the resulting hash (using the encryption key). Wegman
+and Carter showed that when the hash-function family is strongly universal (a similar but stronger
+property than the one we deﬁned) and the encryption is realized by a one-time pad, the adversary
+cannot forge with probability better than that obtained by choosing a random string for the MAC.
+Why Universal Hashing? As suggested many times before, the above approach is a promising
+one for building a highly-secure and ultra-fast MAC [17, 24, 14]. The reasoning is like this. The
+speed of a universal-hashing MAC depends on the speed of the hashing step and the speed of the
+encrypting step. But if the hash function compresses messages well (i.e., its output is short) then
+the encryption shouldn’t take long simply because it is a short string that is being encrypted. On
+
+
+
+
+                                                 1
+the other hand, since the combinatorial property of the universal hash-function family is mathe-
+matically proven (making no cryptographic hardness assumptions), it needs no “over-design” or
+“safety margin” the way a cryptographic primitive would. Quite the opposite: the hash-function
+family might as well be the fastest, simplest thing that one can prove universal. And that should
+be much faster than any sort of “cryptographic” primitive.
+    Equally important, the above approach makes for desirable security properties. Since the cryp-
+tographic primitive is applied only to the (much shorter) hashed image of the message, we can select
+a cryptographically conservative design for this step and pay with only a minor impact on speed.
+Further, the underlying cryptographic primitive is used only on short and secret messages, elimi-
+nating the typical avenues of attack. Under this approach security and eﬃciency are not conﬂicting
+requirements—quite to the contrary, they go hand in hand.
+The Quest For Fast Universal Hashing. At least in principle, the universal-hashing paradigm
+has reduced the problem of fast message authentication to the problem of fast universal hashing.
+Thus there has been much recent work on the design of fast-to-compute universal hash-function fam-
+ilies. Here is a brief overview of some of this work; a more complete overview is given in Section 1.3.
+Krawczyk [17] describes a “cryptographic CRC” construction, which has very fast hardware imple-
+mentations and reasonably fast software implementations; it needs about 6 cycles/byte, as shown
+by Shoup [25]. Rogaway’s “bucket hashing” construction [24] was the ﬁrst universal hash-function
+family explicitly targeted for fast software implementation; it runs in about 1.5–2.5 cycles/byte.
+Halevi and Krawczyk devised the MMH hash-function family [14], which takes advantage of current
+CPU trends and hashes at about 1.5–3 cycles/byte on modern CPUs.
+     With methods now in hand which hash so very quickly, one may ask if the hash-design phase
+of making a fast MAC is complete; after all, three cycles/byte may already be fast enough to keep
+up with high-speed network traﬃc. However, authenticating information at the rate that it is
+generated or transmitted is not the real goal. The goal is to use the smallest possible fraction of
+the CPU’s cycles by the simplest possible hash mechanism, and having the best proven bounds. In
+this way most of the machine’s cycles are available for other work.
+
+1.2   Our Contributions
+UMAC represents the next step in the quest for a fast and secure MAC. Here we describe the main
+contributions associated to its design.
+New Hash Function Families And Their Tight Analyses. A hash-function family named
+NH underlies hashing in UMAC. It is a simpliﬁcation of the MMH and NMH families described
+in [14]. The family NH works like this. The message M to hash is regarded as a sequence of an
+even number  of integers, M = (m1 , . . . , m ), where each mi ∈ {0, . . . , 2w − 1} corresponds to a
+w-bit word (e.g., w = 16 or w = 32). A particular hash function is named by a sequence of n ≥ 
+w-bit integers K = (k1 , . . . , kn ). The NH function is then computed as
+                     ⎛                                                         ⎞
+                       /2
+                      
+          NHK (M ) = ⎝     ((m2i−1 + k2i−1 ) mod 2w ) · ((m2i + k2i ) mod 2w ))⎠ mod 22w .         (1)
+                        i=1
+
+The novelty of this method is that all the arithmetic is “arithmetic that computers like to do”—no
+ﬁnite ﬁelds or non-trivial modular reductions come into the picture.
+    Despite the non-linearity of this hash function and despite its being deﬁned using two diﬀerent
+rings, Z/2w and Z/22w , not a ﬁnite ﬁeld, we manage to obtain a tight and desirable bound on the
+
+
+
+
+                                                  2
+collision probability: 2−w . Earlier analyses of related hash-function families had to give up a small
+constant in the analysis [14]. We give up nothing.
+    After proving our bounds on NH we go on and extend the method using the “Toeplitz construc-
+tion.” This is a well-known approach to reduce the error probability without much lengthening of
+the key [18, 17]. Prior to our work the Toeplitz construction was known to work only for linear
+functions over fields. Somewhat surprisingly, we prove that it also works for NH. Here again our
+proof achieves a tight bound for the collision probability. We then make further extensions to
+handle length-issues, and allow other optimizations, ﬁnally arriving at the hash-function family
+actually used in UMAC.
+Complete Specification. Previous work on universal-hash-paradigm MACs dealt with fast hash-
+ing but did not address in detail the next step of the process—how to embed a fast-to-compute hash
+function into a concrete, practical, and fully analyzed MAC. For some hash-function constructions
+(e.g., cryptographic CRCs) this step would be straightforward. But for the fastest hash families
+it is not, since these hash functions have some unpleasant characteristics, including specialized
+domains, long key-lengths, long output-lengths, or good performance only on very long messages.
+It had never been demonstrated that these diﬃculties could be overcome in a practical way which
+would deliver on the promised speed. This paper shows that they can. We provide a complete
+speciﬁcation of UMAC, a ready-to-use MAC, in a separate speciﬁcation document [6]). The techni-
+cal diﬃculties encountered in embedding our hash-function family into a MAC are not minimized;
+they are treated with the same care as the hash-function family itself. The construction is fully
+analyzed, beginning-to-end. What is analyzed is exactly what is speciﬁed; there is no “gap” which
+separates them. This has only been possible by co-developing the speciﬁcation document and the
+academic paper.
+PRF(HASH, Nonce) Construction. Previous work has assumed that one hashes messages to
+some ﬁxed length string (e.g., 64 bits) and then the cryptographic primitive is applied. But using
+universal hashing to reduce a very long message into a ﬁxed-length one can be complex, require
+long keys, or reduce the quantitative security. Furthermore, hashing the message down by a factor
+of 128, say, already provides much of the speed and security beneﬁts. So we reduce the length
+of the message by some pre-set constant, concatenate a sender-generated nonce, and then apply
+a pseudorandom function (PRF) to the shorter (but still unbounded-length) string. The nonce is
+communicated along with the image of the PRF. We call this the PRF(HASH, Nonce)-construction.
+We analyze it and compare it with alternatives.
+Extensive Experimentation. In deﬁning UMAC we have been guided by extensive experimen-
+tation. Through this we have identiﬁed several parameters that inﬂuence the speed which UMAC
+delivers. Our studies illuminate how these algorithmic details shape performance. Our experi-
+ments have made clear that while any reasonable version of UMAC (i.e., any reasonable setting of
+the parameters) should out-perform any conventional MAC, the fastest version of UMAC for one
+platform will often be diﬀerent from the fastest version for another platform. We have therefore
+kept UMAC a parameterized construction, allowing some speciﬁc choices to be ﬁne-tuned to the
+application or platform at hand. In this paper and in [6] we consider a few reasonable settings for
+these parameters.
+SIMD Exploitation. Unlike conventional, inherently serial MACs, UMAC is parallelizable, and
+will have ever-faster implementations as machines oﬀer up increasing amounts of parallelism. Our
+algorithm and our speciﬁcation were speciﬁcally designed to allow implementations to exploit the
+form of parallelism oﬀered up in current and emerging SIMD architectures (Single Instruction
+
+
+
+                                                  3
+Multiple Data). These architectures provide some long registers that can, in certain instructions,
+be treated as vectors of smaller-sized words. For NH to run well we must be able to quickly multiply
+w-bit numbers (w = 16 or w = 32) into their w-bit product. Many modern machines let us do
+this particularly well since we can re-appropriate instructions for vector dot-products that were
+primarily intended for multimedia computations. One of our fastest implementations of UMAC
+runs on a Pentium and makes use of its MMX instructions which treat a 64-bit register as a vector
+of four 16-bit words. UMAC is the ﬁrst MAC speciﬁcally constructed to exploit SIMD designs.
+
+1.3   Related Work
+MMH Paper. Halevi and Krawczyk investigated fast universal hashing in [14]. Their MMH
+construction takes advantage of improving CPU support for integer multiplication, particularly
+the ability to quickly multiply two 32-bit multiplicands into a 64-bit product. Besides MMH, [14]
+describes a (formerly-unpublished) hash-function family of Carter and Wegman, NMH∗ , and a
+variation of it called NMH. Our NH function, as described in formula (1), is a (bound-improving)
+simpliﬁcation of NMH. The diﬀerence between NH and NMH is that NMH uses an additional
+modular reduction by a prime close to 2w , followed by a reduction modulo 2w . Similarly, NMH∗ is
+the same as NH, as given in formula (1) except the mods are omitted and the arithmetic is in Z/p,
+where p is prime.
+Other Work On Universal Hashing For MACs. Krawczyk describes a “cryptographic CRC”
+which has very fast hardware implementations [17]. Shoup later studied the software performance of
+this construction, and gave several related ones [25]. In [17] one also ﬁnds the Toeplitz construction
+used in a context similar to ours. An earlier use of the Toeplitz construction, in a diﬀerent domain,
+can be found in [18].
+    A hash-function family speciﬁcally targeted for software was Rogaway’s “bucket hashing” [24].
+Its peak speed is fast but its long output length makes it suitable only for long messages.
+    Nevelsteen and Preneel give a performance study of several universal hash functions proposed
+for MACs [19]. Patel and Ramzan give an MMH-variant that can be more eﬃcient than MMH in
+certain settings [10].
+    Bernstein reports he has designed and implemented a polynomial-evaluation style hash-function
+family that has a collision probability of around 2−96 and runs in 4.5 Pentium cycles/byte [5]. Other
+recent work about universal hashing for authentication includes [1, 15].
+Other Types Of MACs. Most concrete MACs have been constructed from other cryptographic
+primitives. The most popular choice of cryptographic primitive has been a block cipher, with the
+most popular construction being the CBC-MAC [2]. This MAC was analyzed by [4]. An extension
+of this analysis was carried out by [20], this extension being relevant for how we suggest using a
+block cipher to make a PRF.
+    More recently, MACs have been constructed from cryptographic hash-functions. It has usually
+been assumed that this would lead to faster MACs than the CBC-MAC. A few such methods
+are described in [26, 16], and analysis appears in [21, 22]. An increasingly popular MAC of this
+cryptographic-hash-function variety is HMAC [3, 13]. In one version of UMAC we suggest using
+HMAC as the underlying PRF. One can view UMAC as an alternative to HMAC, with UMAC
+being faster but more complex.
+Other Versions. The proceedings version of this paper appears in [7].
+
+
+
+
+                                                  4
+      Subkey generation:
+       Using a PRG, map Key to K = K1 K2 · · · K1024 , with each Ki a 32-bit word, and
+                            to A, where |A| = 512.
+
+      Hashing the message Msg to HM = NHXKey (Msg):
+       Let Len be |Msg| mod 4096, encoded as a 2-byte string.
+       Append to Msg the minimum number of 0 bits to make |Msg| divisible by 64.
+       Let Msg = Msg 1  Msg 2  · · ·  Msg t where each Msg i is 1024 words except for Msg t ,
+                               which has between 2 and 1024 words.
+       Let HM = NHK (Msg 1 )  NHK (Msg 2 )  · · ·  NHK (Msg t )  Len
+
+      Computing the authentication tag :
+       The tag is Tag = HMAC-SHA1A (Nonce  HM )
+
+
+Figure 1: An illustrative special case of UMAC. The algorithm above computes a 160-bit tag given
+Key, Msg, and Nonce. See the accompanying text for the definition of NH.
+
+
+2     Overview of UMAC
+Unlike many MACs, our construction is stateful for the sender: when he wants to authenticate some
+string Msg he must provide as input to UMAC (along with Msg and the shared key Key) a 64-bit
+string Nonce. The sender must not reuse the nonce within the communications session. Typically
+the nonce would be a counter which the sender increments with each transmitted message.
+    The UMAC algorithm speciﬁes how the message, key, and nonce determine an authentication
+tag. The sender will need to provide the receiver with the message, nonce, and tag. The receiver
+can then compute what “should be” the tag for this particular message and nonce, and see if it
+matches the tag actually received. The receiver might also wish to verify that the nonce has not
+been used already; doing this is a way to avoid replay attacks.
+    Like many modern ciphers, UMAC employs a subkey generation process in which the underlying
+(convenient-length) key is mapped into UMAC’s internal keys. In typical applications subkey
+generation is done just once, at the beginning of a long-lived session, and so subkey-generation is
+usually not performance-critical.
+    UMAC depends on a few diﬀerent parameters. We begin by giving a description of UMAC as
+specialized to one particular setting of these parameters. Then we brieﬂy explore the role of various
+parameters.
+
+2.1   An Illustrative Special Case
+Refer to Figure 1. The underlying key Key (which might be, say, 128 bits) is ﬁrst expanded into
+internal keys K and A, where K is 1024 words (a word being 32-bits) and A is 512 bits. How Key
+determines K and A is a rather unimportant and standard detail (it can be handled using any
+PRG), and so we omit its description.
+    Figure 1 refers to the hash function NH, which is applied to each block Msg 1 , . . . , Msg t of Msg.
+Let M = Msg j be one of these blocks. Regard M as a sequence M = M1 · · · M of 32-bit words,
+where 2 ≤  ≤ 1024. The hash function is named by K = K1 · · · K1024 , where Ki is 32 bits. We let
+
+
+
+
+                                                   5
+                                                                                                                       Word Stride
+
+
+
+  M1                 M2                      M3                    M4                   M1                  M2          M3           M4           M5          M6        M7         M8
+
+             K1                 K2                      K3                    K4             K1                  K2          K3            K4          K5          K6         K7        K8
+ 32           32                                                                       16         16
+
+       +32                +32                     +32                   +32                 +16              +16            +16        +16            +16      +16       +16        +16
+
+              32          32                                                                           16              16
+
+                   ×64                                       ×64                                                 ×32                 ×32                ×32             ×32
+
+                          64                                                                                                 32
+
+
+                                      +64                                                                                                       +32
+                                     64                                                                                                      32
+
+
+
+                               64-Bit Hash Result                                                                                    32-Bit Hash Result
+
+
+Figure 2: Left: The NH hash function in its “basic” form, using a wordsize of w = 32 bits.
+This type of hashing underlies UMAC-STD-30 and UMAC-STD-60. Right: The “strided” form
+of NH, using a wordsize of w = 16 bits. This type of hashing underlies UMAC-MMX-30 and
+UMAC-MMX-60.
+
+NHK (M ) be the 64-bit string
+
+  NHK (M ) = (M1 +32 K1 ) ×64 (M2 +32 K2 ) +64 · · · +64 (M−1 +32 K−1 ) ×64 (M +32 K )
+
+where +32 is computer addition on 32-bit strings to give their 32-bit sum, +64 is computer addition
+on 64-bit strings to give their 64-bit sum, and ×64 is computer multiplication on unsigned 32-
+bit strings to give their 64-bit product. This description of NH is identical to Equation (1) (for
+w = 32) but emphasizes that all the operations we are performing directly correspond to machine
+instructions of modern CPUs. See the left-hand side of Figure 2 for a picture.
+    Theorem 4.2 says that NH is 2−32 -universal with respect to strings of equal and appropriate
+length. Combining with Proposition 6.1 gives that NHX (as described in Figure 1) is 2−32 -universal,
+but now for any pair of strings. Now by Theorem 8.2, if an adversary could forge a message with
+probability 2−32 + δ then an adversary of essentially the same computational complexity could
+break HMAC-SHA1 (as a PRF) with advantage δ − 2−160 . But analysis in [3] indicates that one
+can’t break HMAC-SHA1 (as a PRF) given generally-accepted assumptions about SHA-1.
+
+2.2          UMAC Parameters
+The full name of the version of NH just described is NH[n, w], where n = 1024 and w = 32: the
+wordsize is w = 32 bits and the blocksize is n = 1024 words. The values of n and w are examples
+of two of UMAC’s parameters. Let us describe a few others.
+    Naturally enough, the pseudorandom function (PRF) which gets applied to Nonce  HM is a
+parameter. We used HMAC-SHA1, but any PRF is allowed. Similarly, it is a parameter of UMAC
+how Key gets mapped to K and A.
+    The universal hashing we used in our example had collision probability 2−32 . We make provisions
+for lowering this (e.g., to 2−64 ). To square the collision probability one could of course hash
+the message twice, using independent hash keys, and concatenate the results. But an important
+optimization in UMAC is that the two keys that are used are not independent; rather, one key
+is the “shift” of the other, with a few new words coming in. This is the well-known “Toeplitz
+
+
+
+
+                                                                                   6
+construction.” We prove in Theorem 5.1 that, for NH, the probability still drops according to the
+square.
+    In our example we used a long subkey K—it had 4096 bytes. To get good compression with
+a shorter subkey we can use two-level (2L) hashing. If a hash key of length n1 gives compression
+ratio λ1 and a hash key of length n2 gives compression ratio λ2 then using two levels of hashing
+gives compression ratio λ1 λ2 with key size 1 + 2 . Our speciﬁcation allows for this. In fact, we
+allow 2L hashing in which the Toeplitz shift is applied at each level. It turns out that this only
+loses a factor of two in the collision probability. The analysis is rather complex, and is omitted.
+    To accommodate SIMD architectures in the computation of NH we allow slight adjustments in
+the indexing of NH. For example, to use the MMX instructions of the Pentium processor, instead
+of multiplying (M1 +16 K1 ) by (M2 +16 K2 ) and (M3 +16 K3 ) by (M4 +16 K4 ), we compute
+          (M1 +16 K1 ) ×32 (M5 +16 K5 ) +32 (M2 +16 K2 ) ×32 (M6 +16 K6 ) +32 . . .
+There are MMX instructions which treat each of two 64-bit words as four 16-bit words, correspond-
+ing words of which can be added or multiplied to give four 16-bit sums or four 32-bit products.
+Reading M1  M2  M3  M4 into one MMX register and M5  M6  M7  M8 into another, we are
+well-positioned to multiply M1 +16 K1 by M5 +16 K5 , not M2 +16 K2 . See Figure 2.
+    There are a few more parameters. The sign parameter indicates whether the arithmetic op-
+eration ×64 is carried out thinking of the strings as unsigned (non-negative) or signed (two’s-
+complement) integers. The signed version of NH requires a slightly diﬀerent analysis and loses a
+factor of two in the collision probability. This loss is inherent in the method; our analysis is tight.
+    If the input message is suﬃciently short there is no speed savings to be had by hashing it. The
+min-length-to-hash parameter speciﬁes the minimum-length message which should be hashed.
+    An endian parameter indicates if the MAC should favor big-endian or little-endian computation.
+Named Parameter Sets. In [6] we suggest ﬁve diﬀerent settings for the vector of param-
+eters, giving rise to UMAC-STD-30, UMAC-STD-60, UMAC-MMX-15, UMAC-MMX-30, and
+UMAC-MMX-60. We summarize their salient features.
+    UMAC-STD-30 and UMAC-STD-60 use a wordsize of w = 32 bits. They employ 2L hashing
+with a compression factor of 32 followed by a compression factor of 16. This corresponds to a
+subkey K of about 400 Bytes. They employ HMAC-SHA1 as the underlying PRF. They use
+signed arithmetic. The diﬀerence between UMAC-STD-30 and UMAC-STD-60 are the collision
+bounds (and therefore forgery bounds): 2−30 and 2−60 , respectively, which are achieved by hashing
+either once or twice. These two versions of UMAC perform well on a wide range of contemporary
+processors.
+    UMAC-MMX-15, UMAC-MMX-30 and UMAC-MMX-60 are well-suited for exploiting the SIMD-
+parallelism available in the MMX instruction set of Intel processors. They use wordsize w = 16
+bits. Hashing is accomplished with a single-level scheme and a hash key of about 4 KBytes, which
+yields the same overall compression ratio as the 2L scheme used in the UMAC-STD variants. These
+MACs use the CBC-MAC of a software-eﬃcient block cipher as the basis of the underlying PRF.
+Our tests were performed using the block cipher RC6 [23]. Arithmetic is again signed. The dif-
+ference between UMAC-MMX-15, UMAC-MMX-30 and UMAC-MMX-60 is the maximal forgery
+probability: 2−15 , 2−30 and 2−60 , respectively.
+
+
+3    UMAC Performance
+Fair performance comparisons are always diﬃcult to make, but they are particularly diﬃcult for
+UMAC. First, UMAC depends on a number of parameters, and the most desirable setting for these
+
+
+                                                  7
+0.25                                                            Pentium II       PowerPC           Alpha
+
+  1                                               UMAC-STD-60   1.49   (1.93)   1.81   (1.58)   1.03   (2.78)
+                                                  UMAC-STD-30   2.79   (1.03)   2.28   (1.26)   1.79   (1.60)
+  4
+                                                  UMAC-MMX-60   2.94   (0.98)   4.21   (0.66)   0.287 (10.0)
+ 16                                               UMAC-MMX-30   5.66   (0.51)   7.20   (0.39)   0.571 (5.02)
+ 64                                               UMAC-MMX-15   8.47   (0.33)   10.5   (0.27)   0.981 (2.85)
+256                                               CBC-MAC-RC6   0.162 (17.7)    0.210 (13.7)    0.068 (42.5)
+       8   32   128 512 2k       8k    32k 128k
+                                                  HMAC-SHA1     0.227 (12.6)    0.228 (12.6)    0.117 (24.5)
+                Message Size (Bytes)
+
+
+
+Figure 3: UMAC Performance. Left: Performance over various message lengths on a Pentium II,
+measured in machine cycles/byte. The lines in the graph correspond to the following MACs (begin-
+ning at the top-right and moving downward): UMAC-MMX-30, UMAC-MMX-60, UMAC-STD-30,
+UMAC-STD-60, HMAC-SHA1 and CBC-MAC-RC6. Right: Peak performance for three architec-
+tures measured in Gbits/sec (cycles/byte). The Gbits/sec numbers are normalized to 350 MHz.
+
+
+parameters diﬀers from platform to platform. In some usage scenarios it is realistic to assume
+the most desirable set of parameters, though often it is not. Thus it is unclear which parameters
+should be selected and tested on which platforms. Second, UMAC performance varies with message
+length. The advantage UMAC delivers over conventional MACs increases as messages get longer.
+What message lengths should be chosen for performance tests?
+    To address the ﬁrst issue we report performance characteristics for a few diﬀerent parameter
+choices. To address the second issue we report timing data for a variety of message lengths.
+Test Environment. We implemented the four UMAC variants named in Section 2.2 on three
+representative hardware platforms: a 350 MHz Intel Pentium II, a 200 MHz IBM/Motorola Pow-
+erPC 604e, and a 300 MHz DEC Alpha 21164. We also implemented the UMAC-MMX variants on
+a pre-release PowerPC 7400 equipped with AltiVec SIMD instructions and running at 266 MHz.
+Performing well on these platforms is important for acceptance of UMAC but also is an indication
+that the schemes will work well on future architectures. The SIMD operations in the MMX and
+AltiVec equiped processors and the 64-bit register size of the Alpha are both features we expect to
+become more prevalent in future processors.
+    All tests were written in C with a few functions written in assembly. For the Pentium II we
+wrote assembly for RC6, SHA-1, and the ﬁrst-level NH hashes. For the PowerPC 604e we wrote in
+assembly just the ﬁrst-level NH hashes. In both cases, the number of lines of assembly written was
+small—about 70–90 lines. No assembly code was written for the Alpha or AltiVec implementations.
+    For each combination of options we determined the scheme’s throughput on variously sized mes-
+sages, eight bytes through 512 KBytes. The experimental setup ensured that messages resided in
+level-1 cache regardless of their length. For comparison the same tests were run for HMAC-SHA1 [11]
+and the CBC-MAC of a fast block cipher, RC6 [23].
+Results. The graph in Figure 3 shows the throughput of ﬁve versions of UMAC, as well as
+HMAC-SHA1 and CBC-MAC-RC6, all run on our Pentium II. The table gives peak throughput for
+the same MACs, but does so for all three architectures. When reporting throughput in Gbits/second
+the meaning of “Gbit” is 109 bits (as opposed to 230 bits). The performance curves for the Alpha
+and PowerPC look similar to the Pentium II—they perform better than the reference MACs at
+around the same message length, and level out at around the same message length.
+
+
+
+                                                      8
+    UMAC performs best on long messages because the hash function is then most eﬀective at
+reducing the amount of data acted upon by the PRF. For our choice of tested parameters the
+maximum compression ratio is achieved on messages of 4 KBytes and up, which is why the curves
+in Figure 3 level out at around 4 KBytes. Still, reasonably short messages (a couple hundred bytes)
+already see substantial beneﬁt from the hashing. For short messages about half the time spent by
+UMAC-MMX-60 authenticating is spent in the PRF, but that ratio drops to around 7% for longer
+messages.
+    When messages are short the portion of time spent computing the PRF is higher, making the
+choice of PRF more signiﬁcant. Our tests show that, all other parameters being the same, an
+RC6-based UMAC is about 50% faster than one based on SHA-1 for messages of length 32 bytes,
+but this advantage drops to 10% - 20% for 4 KByte messages and nearly vanishes for 64 KByte
+messages.
+    In general, the amount of work spent hashing increases as word size decreases because the
+number of arithmetic operations needed to hash a ﬁxed-length message is inversely related to word
+size. The performance of UMAC on the Alpha demonstrates this clearly. On UMAC-MMX-60
+(w = 16) it requires 10 cycles per byte to authenticate a long message, while it requires 2.8 for
+UMAC-STD-60 (w = 32) and only 1.7 for a test version which uses w = 64 bit words1 . Perhaps our
+most surprising experimental ﬁnding was how, on some processors, we could dramatically improve
+performance by going from words of w = 32 bits to words of w = 16 bits. Such a reduction in word
+size might appear to vastly increase the amount of work needed to get to a given collision bound.
+But a single MMX instruction which UMAC uses heavily can do four 16-bit multiplications and
+two 32-bit additions, and likewise a single AltiVec instruction can do eight 16-bit multiplications
+and eight 32-bit additions. This is much more work per instruction than the corresponding 32-bit
+instructions.
+    UMAC-STD uses only one-tenth as much hash key as UMAC-MMX to achieve the same com-
+pression ratio. The penalty for such 2L hashing ranges from 8% on small messages to 15% on long
+ones. To lower the amount of key material we could have used a one-level hash with a smaller
+compression ratio, but experiments show this is much less eﬀective: relative to UMAC-MMX-60,
+which uses about 4 KBytes of hash key, a 2 KBytes scheme goes 85% as fast, a 1 KByte scheme
+goes 66% as fast, and a 512 bytes scheme goes 47% as fast.
+    The endian-orientation of the UMAC version being executed has little eﬀect on performance
+for the PowerPC and Pentium II systems. Both support swapping the endian-orientation of words
+eﬃciently. On the Alpha, and most other systems, such reorientation is not part of the architecture
+and must be done with an expensive series of primitive operations. Key setup on our 350 MHz
+Pentium II took 450 μs for UMAC-MMX-60 and 130 μs for UMAC-STD-60, or about 158,000 and
+46,000 cycles, respectively.
+    To answer some questions we had about UMAC performance we implemented it with sev-
+eral variations. In one supplementary experiment we replaced the NH hash function used in
+UMAC-STD-30 by MMH [14]. Peak performance dropped by 24%. We replaced the NH hash
+function of UMAC-MMX-30 by a 16-bit MMH (implemented using MMX instructions) and peak
+performance dropped by 5%. Thus our performance gains (compared to prior art) are due more to
+SIMD exploitation than the diﬀerence between NH and MMH.
+    The hash family MMH can be simpliﬁed by eliminating its last two modular reductions. We refer
+                                                                               
+to the resulting hash function family as MH, and it is deﬁned by MHK (M ) = i=1 mi ki mod 22w .
+An MH-version of UMAC-MMX-30 (w = 16) was about 5% slower than (our NH-version of)
+  1
+     Another reason UMAC-MMX-60 does poorly on non-SIMD processors is because of additional overhead required
+to load small words into registers and then sign-extend or zero the upper bits of those registers.
+
+
+
+
+                                                     9
+UMAC-MMX-30, while an MH-version of UMAC-STD-30 (w = 32) was about 26% slower than
+(our NH-version of) UMAC-STD-30. Finally, we coded UMAC-STD-30 and UMAC-STD-60 for a
+Pentium processor which lacked MMX. Peak speeds were 2.2 cycles/byte and 4.3 cycles/byte—still
+3 to 6 times faster than methods like HMAC-SHA1. Even though these versions of UMAC do
+not use MMX instructions, Intel processors without MMX are also slower than the Pentium II at
+integer multiplication, an important operation in UMAC.
+
+
+4     The NH Hash Family
+We now deﬁne and analyze NH, the hash-function family which underlies UMAC. Recall that NH is
+not, by itself, the hash-function family which UMAC uses, but the basic building block from which
+we construct UMAC’s hash families.
+
+4.1    Preliminaries
+Function Families. A family of functions (with domain A ⊆ {0, 1}∗ and range B ⊆ {0, 1}∗ ) is
+a set of functions H = {h : A → B} endowed with some distribution. When we write h ← H we
+mean to choose a random function h ∈ H according to this distribution. A family of functions is
+also called a family of hash functions or a hash-function family.
+    Usually we specify a family of functions H by specifying some ﬁnite set of strings, Key, and
+explaining how each string K ∈ Key names some function HK ∈ H. We may then think of H not
+as a set of functions from A to B but as a single function H : Key × A → B, whose ﬁrst argument
+we write as a subscript. A random element h ∈ H is determined by selecting uniformly at random
+a string K ∈ Key and setting h = HK .
+Universal Hashing. We are interested in hash-function families in which “collisions” (when
+h(M ) = h(M  ) for distinct M, M  ) are infrequent. The formal deﬁnition follows.
+
+Definition 4.1 Let H = {h : A → B} be a family of hash functions and let  ≥ 0 be a real
+number. We say that H is -universal, denoted -AU, if for all distinct M, M  ∈ A, we have that
+Prh←H [h(M ) = h(M  )] ≤ . We say that H is -universal on equal-length strings if for all distinct,
+equal-length strings M, M  ∈ A, we have that Prh←H [h(M ) = h(M  )] ≤ .
+
+4.2    Definition of NH
+Fix an even n ≥ 2 (the “blocksize”) and a number w ≥ 1 (the “wordsize”). We deﬁne the family
+of hash functions NH[n, w] as follows. The domain is A = {0, 1}2w ∪ {0, 1}4w ∪ · · · ∪ {0, 1}nw and
+the range is B = {0, 1}2w . Each function in NH[n, w] is named by a string K of nw bits; a random
+function in NH[n, w] is given by a random nw-bit string K. We write the function indicated by
+string K as NHK (·).
+    Let Uw and U2w represent the sets {0, . . . , 2w − 1} and {0, . . . , 22w − 1}, respectively. Arithmetic
+done modulo 2w returns a result in Uw ; arithmetic done modulo 22w returns a result in U2w . We
+overload the notation introduced in Section 2.1: for integers x, y let (x +w y) denote (x+y) mod 2w .
+(Earlier this was an operator from strings to strings, but with analogous semantics.)
+    Let M ∈ A and denote M = M1 · · · M , where |M1 | = · · · = |M | = w. Similarly, let K ∈
+{0, 1}nw and denote K = K1 · · · Kn , where |K1 | = · · · = |Kn | = w. Then NHK (M ) is deﬁned as
+                                   /2
+                                   
+                     NHK (M ) =           (k2i−1 +w m2i−1 ) · (k2i +w m2i ) mod 22w
+                                    i=1
+
+
+
+                                                    10
+where mi ∈ Uw is the number that Mi represents (as an unsigned integer), where ki ∈ Uw is the
+number that Ki represents (as an unsigned integer), and the right-hand side of the above equation
+is understood to name the (unique) 2w-bit string which represents (as an unsigned integer) the
+U2w -valued integer result. Henceforth we shall refrain from explicitly converting from strings to
+integers and back, leaving this to the reader’s good sense. (We comment that for everything we do,
+one could use any bijective map from {0, 1}w to Uw , and any bijective map from U2w to {0, 1}2w .)
+    When the values of n and w are clear from the context, we write NH instead of NH[n, w].
+
+4.3   Analysis
+The following theorem bounds the collision probability of NH.
+
+Theorem 4.2 For any even n ≥ 2 and w ≥ 1, NH[n, w] is 2−w -AU on equal-length strings.
+
+Proof: Let M, M  be distinct members of the domain A with |M | = |M  |. We are required to show
+                                                 
+                                            Pr       NHK (M ) = NHK (M  ) ≤ 2−w .
+                                          K←NH
+
+Converting the message and key strings to n-vectors of w-bit words we invoke the deﬁnition of NH
+to restate our goal as requiring
+         ⎡                                                                                                 ⎤
+             /2                                                  /2
+                                                                 
+      Pr ⎣         (k2i−1 +w m2i−1 )(k2i +w m2i ) =                     (k2i−1 +w m2i−1 )(k2i +w m2i )⎦      ≤ 2−w
+             i=1                                                  i=1
+
+where the probability is taken over uniform choices of (k1 , . . . , kn ) with each ki in Uw . Above (and
+for the remainder of the proof) all arithmetic is carried out in Z/22w .
+Since M and M  are distinct, mi = mi for some 1 ≤ i ≤ n. Since addition and multiplication in
+a ring are commutative, we lose no generality in assuming m2 = m2 . We now prove that for any
+choice of k2 , · · · , kn we have
+                                                           /2
+                                                            
+         Pr            (m1 +w k1 )(m2 +w k2 ) +                    (m2i−1 +w k2i−1 )(m2i +w k2i ) =
+       k1 ∈Uw
+                                                            i=2
+
+                                                            /2
+                                                                                                      
+                       (m1 +w k1 )(m2 +w k2 ) +                  (m2i−1 +w k2i−1 )(m2i +w k2i )        ≤ 2−w
+                                                            i=2
+
+which will imply the theorem. Collecting up the summations, let
+                   /2                                                   /2
+                                                                        
+         y=              (m2i−1 +w k2i−1 )(m2i +w k2i ) −                      (m2i−1 +w k2i−1 )(m2i +w k2i )
+                   i=2                                                   i=2
+
+and let c = (m2 +w k2 ) and c = (m2 +w k2 ). Note that c and c are in Uw , and since m2 = m2 ,
+we know c = c . We rewrite the above probability as
+                                      
+                               Pr         c(m1 +w k1 ) − c (m1 +w k1 ) + y = 0 ≤ 2−w .
+                             k1 ∈Uw
+
+In Lemma 4.3 below, we prove that there can be at most one k1 in Uw satisfying c(m1 +w k1 ) −
+c (m1 +w k1 ) + y = 0, yielding the desired bound.
+   The above proof reduced establishing our bound to the following useful lemma, which is used
+again for Theorem 5.1.
+
+
+                                                              11
+Lemma 4.3 Let c and c be distinct values from Uw . Then for any m, m ∈ Uw and any y ∈ U2w
+there exists at most one k ∈ Uw such that c(k +w m) = c (k +w m ) + y in Z/22w .
+
+Proof: We note that it is suﬃcient to prove the case where m = 0: to see this, notice that
+if c(k +w m) = c (k +w m ) + y, then also c(k ∗ +w 0) = c (k ∗ +w m∗ ) + y, where we deﬁne
+k ∗ = (k +w m) and m∗ = (m −w m). If follows that if there exist k1 = k2 satisfying the former
+equality, then there must also exist k1∗ = k2∗ satisfying the latter.
+Assuming m = 0, we proceed to therefore prove that for any c, c , m ∈ Uw with c = c and any
+y ∈ U2w there is at most one k ∈ Uw such that kc = (k +w m )c + y in Z/22w . Since k, m < 2w ,
+we know that (k +w m ) is either k + m or k + m − 2w , depending on whether k + m < 2w or
+k + m ≥ 2w respectively. So now we have
+
+                                  k(c − c ) = m c + y and         k < 2w − m                     (2)
+                           k(c − c ) = (m − 2w )c + y and         k ≥ 2w − m                     (3)
+
+A simple lemma (Lemma 4.4, presented next) shows that there is at most one solution to each of the
+equations above. The remainder of the proof is devoted to showing there cannot exist k = k1 ∈ Uw
+satisfying (2) and k = k2 ∈ Uw satisfying (3) in Z/22w . Suppose such a k1 and k2 did exist. Then
+we have k1 < 2w − m with k1 (c − c ) = m c + y and k2 ≥ 2w − m with k2 (c − c ) = (m − 2w )c + y.
+Subtracting the former from the latter yields
+
+                                        (k2 − k1 )(c − c) = 2w c                                   (4)
+
+We show (4) has no solutions in Z/22w . To accomplish this, we examine two cases:
+
+Case 1: c > c. Since both (k2 − k1 ) and (c − c) are positive and smaller than 2w , their product
+is also positive and smaller than 22w . And since 2w c is also positive and smaller than 22w , it is
+suﬃcient to show that (4) has no solutions in Z. But this clearly holds, since (k2 − k1 ) < 2w and
+(c − c) ≤ c , and so necessarily (k2 − k1 )(c − c) < 2w c .
+
+Case 2: c < c. Here we show (k2 − k1 )(c − c ) = −2w c has no solutions in Z/22w . As before, we
+convert to Z, to yield (k2 −k1 )(c−c ) = 22w −2w c . But again (k2 −k1 ) < 2w and (c−c ) < (2w −c ),
+so (k2 − k1 )(c − c ) < 2w (2w − c ) = 22w − 2w c .
+Let Dw = {−2w + 1, . . . , 2w − 1} contain the values attainable from a diﬀerence of any two elements
+of Uw . We now prove the following lemma, used in the body of the preceding proof.
+
+Lemma 4.4 Let x ∈ Dw be nonzero. Then for any y ∈ U2w , there exists at most one a ∈ Uw such
+that ax = y in Z/22w .
+
+Proof: Suppose there were two distinct elements a, a ∈ Uw such that ax = y and a x = y.
+Then ax = a x so x(a − a ) = 0. Since x is nonzero and a and a are distinct, the foregoing
+product is 22w k for nonzero k. But x and (a − a ) are in Dw , and therefore their product is in
+{−22w + 2w+1 − 1, . . . , 22w − 2w+1 + 1}, which contains no multiples of 22w other than 0.
+Remarks. The bound given by Theorem 4.2 is tight: let M = 0w 0w and M  = 1w 0w and note
+that any key K = K1 K2 with K2 = 0w causes a collision.
+   Although we do not require any stronger properties than the above, NH is actually 2−w -AΔU
+under the operation of addition modulo 22w ; only trivial modiﬁcations to the above proof are
+required. See [17] for a deﬁnition of -AΔU.
+
+
+                                                   12
+   Several variants of NH fail to preserve collision probability  = 2−w . In particular, replacing the
+inner addition or the outer addition with bitwise-XOR increases  substantially. However, removing
+the inner moduli retains  = 2−w (but signiﬁcantly degrades performance).
+
+4.4   The Signed Construction: NHS
+To this point we have assumed our strings are interpreted as sequences of unsigned integers. But
+often we will prefer they be signed integers. Surprisingly, the signed version of NH has slightly
+higher collision probability: we shall now prove that the collision bound increases by a factor of two
+to 2−w+1 -AU on equal-length strings. This helps explain the 2−30 and 2−60 forging probabilities
+for the four UMAC versions named in Section 2.2 and the performance measured in Section 3; in
+actuality, all four algorithms use the signed version of NH.
+    Let Sw and S2w be the sets {−2w−1 , . . . , 2w−1 − 1} and {−22w−1 , . . . , 22w−1 − 1}, respectively.
+For this section, assume all arithmetic done modulo 2w returns a result in Sw and all arithmetic
+done modulo 22w returns a result in S2w . The family of hash functions NHS is deﬁned exactly like
+NH except that each Mi ∈ {0, 1}w and K ∈ {0, 1}w is bijectively mapped to an mi ∈ Sw and a
+ki ∈ Sw .
+
+Theorem 4.5 For any even n ≥ 2 and w ≥ 1, NHS[n, w] is 2−w+1 -AU on equal-length strings.
+
+The proof of Theorem 4.5 is identical to the proof for Theorem 4.2 with two exceptions: instead of
+Uw we take elements from Sw , and in the end we use Lemma 4.7, which guarantees a bound of two
+on the number of k1 values satisfying c(m1 +w k1 ) − c (m1 +w k1 ) + y = 0. To prove Lemma 4.7
+we begin by restating Lemma 4.4 for the signed case. Recall that Dw = {−2w + 1, . . . , 2w − 1}.
+
+Lemma 4.6 Let x ∈ Dw be nonzero. Then for any y ∈ S2w , there exists at most one a ∈ Sw such
+that ax = y in Z/22w .
+
+Proof: Notice that the set of possible diﬀerences of any two elements of Sw is again Dw . (This
+follows from the fact that the obtainable diﬀerences for two elements of any set of j consecutive
+integers is always the same, namely {−j + 1, . . . , j − 1}.) Since the proof of Lemma 4.4 depends
+only on Dw , we may recycle the proof without modiﬁcation.
+
+Lemma 4.7 Let c and c be distinct values from Sw . Then for any m, m ∈ Sw and any y ∈ S2w
+there exist at most two k ∈ Sw such that c(k +w m) = c (k +w m ) + y in Z/22w .
+
+Proof: As in the proof to Lemma 4.3, we again notice it is suﬃcient to prove the case where m = 0.
+We now consider two cases depending on whether m < 0 or m ≥ 0. We show in either case there
+can be at most two values of k satisfying c(k +w m) = c (k +w m ) + y in Z/22w .
+
+Case 1: m < 0. Since k ∈ Sw , we know that (k +w m ) is either k + m + 2w (if k + m < −2w−1 ),
+or k + m (if −2w−1 ≤ k + m ). Clearly we cannot have k + m ≥ 2w−1 . Substituting these values
+and moving k to the left yields
+
+                        k(c − c ) = (m + 2w )c + y and     k + m < −2w−1
+                                k(c − c ) = m c + y and    k + m < 2w−1
+
+But Lemma 4.6 tells us there can be at most one solution to each of the above equations.
+
+
+                                                   13
+Case 2: m ≥ 0. Since k ∈ Sw , we now have that (k +w m ) is either k + m (if k + m < 2w−1 )
+or k + m − 2w (if k + m ≥ 2w−1 ). Clearly we cannot have k + m < −2w−1 . Substituting these
+values and moving k to the left yields
+
+                                   k(c − c ) = m c + y and    k + m < 2w−1
+                         k(c − c ) = (m − 2w )c + y and       k + m ≥ 2w−1
+
+But again Lemma 4.6 tells us there can be at most one solution to each of the above equations.
+
+
+A Lower Bound. We now show that the bound for NHS is nearly tight by exhibiting two equal-
+length messages where the probability of collision is very close to 2−w+1 .
+
+Theorem 4.8 Fix an even n ≥ 2 and let mi = 0 for 1 ≤ i ≤ n. Let m1 = m2 = −2w−1 and mi = 0
+for 3 ≤ i ≤ n. Then
+                               
+                         Pr        NHSK (M ) = NHSK (M  )      ≥ 2−w+1 − 21−2w
+                       K←NHS
+
+where the M and M  are mapped in the usual way from mi and mi , respectively.
+
+Proof: As usual, assume henceforth that all arithmetic is in Z/22w . Invoking the deﬁnition of
+NHS, we will show
+
+                      (k1 +w m1 )(k2 +w m2 ) = (k1 +w m1 )(k2 +w m2 ) + y
+
+has at least 2w+1 − 2 solutions in k1 , k2 ∈ Sw . This will imply the theorem. As in the proof
+to Theorem 4.2, y is the collection of terms for the mi , mi , and ki where i > 2. Since we have
+mi = mi = 0 for i > 2, y is clearly 0. Therefore we wish to prove
+
+                                   k1 k2 = (k1 −w 2w−1 )(k2 −w 2w−1 )
+
+has at least 2w+1 − 2 solutions. To remove the inner moduli, we let i1 = 1 if k1 < 0 and i1 = 0
+otherwise. Deﬁne i2 = 1 if k2 < 0 and i2 = 0 otherwise. Now we may re-write the above as
+
+                           k1 k2 = (k1 − 2w−1 + i1 2w )(k2 − 2w−1 + i2 2w ).
+
+Multiplying the right side out and rearranging terms we have
+
+                            2w−1 (k1 (2i2 − 1) + k2 (2i1 − 1)) + 22w−2 = 0.
+
+Multiplying through by 4, we arrive at
+
+                                   2w+1 (k1 (2i2 − 1) + k2 (2i1 − 1)) = 0.
+
+We notice that all k1 , k2 ∈ Sw such that |k1 | + |k2 | = 2w−1 will satisfy the above. Now we count the
+number of k1 , k2 which work: we see that for each of the 2w − 2 choices of k1 ∈ Sw − {0, −2w−1 }
+there are two values of k2 causing |k1 | + |k2 | = 2w−1 , yielding 2w+1 − 4 solutions. And of course
+two further solutions are k1 = −2w−1 , k2 = 0 and k1 = 0, k2 = −2w−1 . And so there are at least
+2w+1 − 2 total solutions.
+
+
+
+                                                     14
+5     Reducing the Collision Probability: Toeplitz Extensions
+The hash-function families NH and NHS are not yet suitable for use in a MAC: they operate only
+on strings of “convenient” lengths (w-bit strings for even  ≤ n); their collision probability may
+be higher than desired (2−w when one may want 2−2w or 2−4w ); and they guarantee low collision
+probability only for strings of equal length. We begin the process of removing these deﬁciencies,
+here describing a method to square the collision probability at a cost far less than doubling the key
+length.
+
+5.1   The Toeplitz Approach
+To reduce the collision probability for NH, we have a few options. Increasing the wordsize w yields
+an improvement, but architectural characteristics dictate the natural values for w. Another well-
+known technique is to apply several random members of our hash-function family to the message,
+and concatenate the results. For example, if we concatenate the results from, say, four independent
+instances of the hash function, the collision probability drops from 2−w to 2−4w . But this solution
+requires four times as much key material. A superior (and well-known) idea is to use the Toeplitz-
+extension of our hash-function families: given one key we “left shift” to get another key, and we
+hash again.
+    For example, to reduce the collision probability to 2−64 for NH[n, 16], we can choose an un-
+derlying hash key K = K1  · · ·  Kn+6 and then hash with the four derived keys K1  · · ·  Kn ,
+K3  · · ·  Kn+2 , K5  · · ·  Kn+4 , and K7  · · ·  Kn+6 . This trick not only saves key material
+but it can also improve performance by reducing memory accesses, increasing locality of memory
+references, and increasing parallelism.
+    Since the derived keys are related it is not clear that the collision probability drops to the
+desired value of 2−64 . Although there are established results which yield this bound (e.g., [18]),
+they only apply to linear hashing schemes over ﬁelds. Instead, NH is non-linear and operates over
+a combination of rings (Z/2w and Z/22w ). In Theorem 5.1 we prove that the Toeplitz construction
+nonetheless achieves the desired bound in the case of NH.
+
+5.2   The Unsigned Case
+We deﬁne the hash-function family NHT [n, w, t] (“Toeplitz-NH”) as follows. Fix an even n ≥ 2,
+w ≥ 1, and t ≥ 1 (the “Toeplitz iteration count”). The domain A = {0, 1}2w ∪{0, 1}4w ∪· · ·∪{0, 1}nw
+remains as it was for NH, but the range is now B = {0, 1}2wt . A function in NH[n, w, t] is named by
+a string K of w(n + 2(t − 1)) bits. Let K = K1  · · ·  Kn+2(t−1) (where each Ki is a w-bit word),
+and let the notation Ki..j represent Ki  · · ·  Kj . Then for any M ∈ A we deﬁne NHT   K (M ) as
+
+
+                K (M ) = NHK1..n (M )  NHK3..n+2 (M )  · · ·  NHK(2t−1)..(n+2t−2) (M ).
+              NHT
+
+When clear from context we write NHT instead of NHT [n, w, t].
+  The following shows that NHT enjoys the best bound that one could hope for.
+
+Theorem 5.1 For any w, t ≥ 1 and any even n ≥ 2, NHT [n, w, t] is 2−wt -AU on equal-length
+strings.
+
+Proof: We refer to NHT [n, w, t] as NHT and to NH[n, w] as NH, where the parameters n, w, and t
+are as in the theorem statement.
+
+
+
+
+                                                  15
+Let M and M  be distinct members of the domain A with |M | = |M  |. We are required to show
+                                                                  −wt
+                                               K (M ) = NHK (M ) ≤ 2
+                                             NHT                        .
+                                   Pr                     T
+                                 K←NHT
+
+As usual, we view M, M  , K as sequences of w-bit words, M = M1  · · ·  M , M  = M1  · · ·  M
+and K = K1  · · ·  Kn+2(t−1) , where the Mi , Mi and Ki are each w-bits long. We denote by mi ,
+mi , and ki the w-bit integers corresponding to Mi , Mi , and Ki , respectively. Again, for this proof
+assume all arithmetic is carried out in Z/22w . For j ∈ {1, . . . , t}, deﬁne Ej as
+
+          /2                                                 /2
+                                                             
+  Ej :          (k2i+2j−3 +w m2i−1 )(k2i+2j−2 +w m2i ) =             (k2i+2j−3 +w m2i−1 )(k2i+2j−2 +w m2i )
+          i=1                                                 i=1
+
+and invoke the deﬁnition of NHT to rewrite the above probability as
+
+                                             Pr   [E1 ∧ E2 ∧ · · · ∧ Et ].                                  (5)
+                                        K←NHT
+
+We call each term in the summations of the Ej a “clause” (for example, (k1 +w m1 )(k2 +w m2 )
+is a clause). We refer to the jth equality in (5) as Equality Ej .
+Without loss of generality, we can assume that M and M  disagree in the last clause (i.e., that
+m−1 = m−1 or m = m ). To see this, observe that if M and M  agree in the last few clauses,
+then each Ej is satisﬁed by a key K if and only if it is also satisﬁed when omitting these last few
+clauses. Hence, we could truncate M and M  after the last clause in which they disagree, and still
+have exactly the same set of keys causing collisions.
+Assume now that m−1 = m−1 . (The proof may easily be restated if we instead have m = m .
+This case is symmetric due to the fact we shift the key by two words.) We proceed by proving that
+for all j ∈ {1, . . . , t}, Pr[Ej is true | E1 , . . . , Ej−1 are true] ≤ 2−w , implying the theorem.
+For E1 , the claim is satisﬁed due to Theorem 4.2. For j > 1, notice that Equalities E1 through
+Ej−1 depend only on key words k1 , . . . , k+2j−4 , whereas Equality Ej depends also on key words
+k+2j−3 and k+2j−2 . Fix k1 through k+2j−4 such that Equalities E1 through Ej−1 are satisﬁed,
+and ﬁx any value for k+2j−3 . We prove that there is at most one value of k+2j−2 satisfying Ej .
+To achieve this we follow the same technique used in Theorem 4.2. Let
+      /2−1                                                  /2−1
+                                                             
+ y=            (k2i+2j−3 +w m2i−1 )(k2i+2j−2 +w m2i ) −              (k2i+2j−3 +w m2i−1 )(k2i+2j−2 +w m2i )
+         i=1                                                   i=1
+
+and let c = (k+2j−3 +w m−1 ) and c = (k+2j−3 +w m−1 ), and then rewrite Ej as
+
+                               c(k+2j−2 +w m ) + y = c (k+2j−2 +w m ).
+
+Since we assumed m−1 = m−1 we know c = c ; clearly m , m , c, c ∈ Uw so Lemma 4.3 tells us
+there is at most one value of k+2j−2 satisfying this equation, which completes the proof.
+
+Comment. With UMAC, we sometimes use shift amounts of more than two words; this clearly
+does not interfere with the validity of our proof, provided the number of shifted words is even.
+
+
+
+
+                                                        16
+                  M1                      M2                   M3
+
+
+
+
+      Ka   NH    Kb    NH      Ka    NH   Kb        NH    Ka   NH   Kb    NH
+
+                                                                                    Ka
+                                                                          K1 K2 K3       ...   Kn Kn+1Kn+2
+                                                                                               Kb
+                                     A                    B
+                                                                               La
+                          La        NH         Lb    NH             L1 L2 L3    ... L2m L2m+1L2m+2
+                                                                                      Lb
+
+                                                Y
+
+Figure 4: The T2 scheme. Each block of the message is hashed twice, first using a key Ka, and then
+using a key Kb. Key Kb is the shift of key Ka. The outputs of the Ka-hashes are concatenated
+and La hashed, and the outputs of the Kb-hashes are concatenated and then Lb hashed. Key Lb
+is once again the shift of key La.
+
+
+5.3   The Signed Case
+Now we consider the Toeplitz construction on NHS, the signed version of NH. The only signiﬁcant
+change in the analysis for NHT will be the eﬀect of the higher collision probability of NHS.
+    We deﬁne the hash family NHST [n, w, t] (“Toeplitz-NHS”) exactly as we did for NH, but we
+instead use NHS as the underlying hash function. Now we restate Theorem 5.1 for the signed case.
+
+Theorem 5.2 For any w, t ≥ 1 and any even n ≥ 2, NHST [n, w, t] is 2t(−w+1) -AU on equal-length
+strings.
+
+Proof: The proof is precisely the same as the proof to Theorem 5.1 except we use Theorem 4.5
+in place of Theorem 4.2 and Lemma 4.7 in place of Lemma 4.3. Then, using the same notation
+as Theorem 5.1, PrK←NHST [Ej | E1 , . . . , Ej−1 ] ≤ 2−w+1 , and so PrK←NHST [E1 ∧ E2 ∧ · · · ∧ Et ] ≤
+2t(−w+1) , yielding our result.
+
+
+5.4   Shorter Keys: T2
+Fix an even n ≥ 2 and m, w ≥ 1. We describe the family of hash functions NHT2 [n, m, w] and the
+family of hash functions NHST2 [n, m, w]. Both families have domain A = {0, 1}2w ∪ {0, 1}4w ∪ · · · ∪
+{0, 1}nmw and range B = {0, 1}4w . (That is, the input consists of an even number of w-bit words—
+at least two words and at most mw words. The output is four words.) A function NHT2 (K  L, ·)
+from the family NHT2 [n, m, w] is named by a key K  L having (n + 2)w + (2m + 2)w bits. (The
+part of the key denoted K has n + 2 words, and the part of the key denoted L has 2m + 2 words.)
+We deﬁne NHT2 (K  L, M ) below. See Figure 4 as well.
+
+function NHT2 (K  L, M )
+
+
+
+                                                     17
+1.      Let Ka = K[1..nw]
+2.      Let Kb = K[2w + 1..(n + 2)w]
+3.      Let La = L[1..2mw]
+4.      Let Lb = L[2w + ..(2m + 2)w]
+5.      Let M1  · · ·  Mt = M , where t = |M |/(nw) ,
+               |M1 | = · · · = |Mt−1 | = nw, and 2w ≤ |Mt | ≤ nw
+6.      A = NHKa (M )  · · ·  NHKa (Mt )
+7.      B = NHKb (M )  · · ·  NHKb (Mt )
+8.      Return NHLa (A)  NHLb (B)
+
+The family of hash functions NHST2 [n, m, w] is deﬁned exactly as above except for using NHS
+instead of NH throughout the construction. We can show the following two theorems.
+
+Theorem 5.3 For any m, w ≥ 1 and any even n ≥ 2, NHT2 [n, m, w] is 2−2w+2 -AU on equal-length
+strings.
+
+Theorem 5.4 For any m, w ≥ 1 and any even n ≥ 2, NHST2 [n, m, w] is 2−2w+4 -AU on equal-length
+strings.
+
+
+6     Arbitrary-Length Messages: Padding, Concatenation, Length
+      Annotation
+With NHT we can decrease the collision probability to any desired level but we still face the problem
+that this function operates only on strings of “convenient” length, and that it guarantees this low
+collision probability only for equal-length strings. We solve these problems in a generic manner,
+with a combination of padding, concatenation, and length annotation.
+Mechanism. Let H : {A → B} be a family of hash functions where functions in H are deﬁned only
+for particular input lengths, up to some maximum, and all the hash functions have a ﬁxed output
+                                         
+length. Formally, the domain is A = i∈I {0, 1}i for some ﬁnite nonempty index set I ⊆ N and
+the range is B = {0, 1}β , where β is some positive integer. Let a (the “blocksize”) be the length
+of the longest string in A and let α ≥ lg2 a be large enough to describe |M | mod a. Then we
+deﬁne H∗ = {h∗ : {0, 1}∗ → {0, 1}∗ } as follows. Each function h ∈ H gives rise to a corresponding
+function h∗ ∈ H∗ , A random function of H∗ is determined by taking a random function h ∈ H and
+following the procedure below.
+    First partition the message Msg into some number of “full blocks” (each containing exactly a
+bits) and then a “last block” (which might contain fewer bits). Hash each of the full blocks by
+applying h, and then hash the last block by ﬁrst zero-padding it to the next domain point and then
+applying h. Finally, concatenate all the hash values (each having β bits), and append (an encoding
+of) the length of the last block prior to padding. 2 Pseudocode follows.
+
+function h∗ (Msg)
+1.    If M = λ then return 0α
+2.    View Msg as a sequence of “blocks”, Msg = Msg 1  · · ·  Msg t ,
+             with |Msg j | = a for all 1 ≤ j < t, and 1 ≤ |Msg t | ≤ a
+    2
+      Since the length of the last block (prior to padding) is between 1 and a, it suﬃces to take this number modulo a;
+it still speciﬁes the length of the last block. The length annotation can equivalently be regarded as the length of the
+original message Msg modulo a.
+
+
+
+
+                                                          18
+3.     Let Len be an α-bit string that encodes |Msg| mod a
+4.     Let i ≥ 0 be the least number such that Msg t  0i ∈ A
+5.     Msg t = Msg t  0i
+6.     Return h(Msg 1 )  · · ·  h(Msg t )  Len
+
+
+Analysis. The following proposition indicates that we have correctly extended H to H∗ .
+
+Proposition 6.1 Let I ⊆ N be a nonempty finite set, let β ≥ 1 be a number, and let H = {h :
+           i        β                                        ∗     ∗        ∗          ∗
+  i∈I {0, 1} → {0, 1} } be a family of hash functions. Let H = {h : {0, 1} → {0, 1} } be the
+family of hash functions obtained from H as described above. Suppose H is -AU on strings of equal
+length. Then H∗ is -AU (across all strings).
+
+Proof: The idea is to note that when distinct messages Msg and Msg  have diﬀerent lengths
+then, by our deﬁnition of H∗ , their hashes can never collide; and if, on the other hand, distinct
+messages Msg and Msg  have the same length, then, because H is -AU on equal-length strings, the
+hash under h∗ ← H∗ of Msg and Msg  agree with probability at most  even if one ﬁxes attention
+on some particular spot where Msg and Msg  diﬀer. Details follows.
+We must show that for all distinct Msg, Msg  ∈ {0, 1}∗ , Prh∗ ∈H∗ [h∗ (Msg) = h∗ (Msg  )] ≤ . So ﬁx
+distinct Msg, Msg  ∈ {0, 1}∗ and consider the following cases, based on the relative lengths of these
+strings:
+Case 1. Let t = |Msg|/a and let t = |Msg  |/a . If the length of Msg and Msg  are suﬃciently
+diﬀerent that t = t then the probability that h∗ (Msg) = h∗ (Msg  ) is zero, since h∗ (Msg) and
+h∗ (Msg  ) have diﬀerent lengths.
+Case 2. With t and t as above, assume |Msg| diﬀers from |Msg  | but in a manner such that t = t .
+This means that the lengths of the last blocks of Msg and Msg  diﬀer, and therefore the last α bits
+of h∗ (Msg) (representing the length of the last block) diﬀer from the last α bits of h∗ (Msg  ), so the
+probability of collision is zero.
+Case 3. Finally, assume |Msg| = |Msg  |. Suppose Msg is partitioned into Msg 1  · · ·  Msg t
+and Msg  is partitioned into Msg 1  · · ·  Msg t . Since Msg = Msg  there exists some index i
+such that Msg i = Msg i . Fix such an i. Of course |Msg i | = |Msg i |. If i = t then we replace
+Msg i and Msg i by what we get after zero-padding them, but the lengths of the (now padded)
+blocks Msg i and Msg i will still be identical and these blocks will still diﬀer. Hence we have that
+Prh∈H [h(Msg i ) = h(Msg i )] ≤ . Moreover, h(Msg i ) = h(Msg i ) implies that h∗ (Msg) = h∗ (Msg  ),
+since one can infer h(Msg i ) from h∗ (Msg) and one can infer h(Msg i ) from h∗ (Msg  ). (This uses
+the fact the range of h is ﬁxed-length strings.) It follows that h∗ (Msg) and h∗ (Msg  ) coincide with
+probability at most .
+Comment. For implementation convenience the spec for UMAC [6] is byte-oriented, and so the
+domain of the hash function deﬁned in the spec is actually ({0, 1}8 )∗ , not {0, 1}∗ .
+
+
+7    Final Extensions: Stride, Endianness, Key Shifts
+There are a few more useful adjustments to enhance the performance, generality, or and ease-of-
+implementation of the hash families we have constructed. Although we have deﬁned NHX with
+parameters n, w, t, what is speciﬁed [6] actually has additional parameters: “message stride,” “en-
+dianness,” “key shift,” “signed/unsigned,” and parameters to handle two-level (2L) hashing. We
+
+
+                                                   19
+have already analyzed the eﬀect of using signed integers and two-level hashing in Section 4.4 and
+Section 5.4. Let us now describe the parameters we have not touched on and argue that they do
+not aﬀect the analysis.
+     First we make the simple observation that any bijection π applied to the inputs of an -AU
+hash-function family leaves the collision bound unchanged. This can be observed by simply looking
+at the deﬁnition of -AU: the statement requires a certain probability hold for any two distinct
+inputs M, M  from the domain. But if M = M  then certainly π(M ) = π(M  ) and so the bound
+still holds.
+Message Stride. In NH we multiplied (k2i−1 +w m2i−1 ) by (k2i +w m2i ) for 1 ≤ i ≤ /2. As
+described in Section 2.2, we may prefer to pair these multiplications diﬀerently, like
+
+                    (k1 +w m1 )(k5 +w m5 ) + (k2 +w m2 )(k6 +w m6 ) + · · ·
+
+to take advantage of machine architectural characteristics. Such rearrangements do not aﬀect our
+collision bound since they amount to applying a ﬁxed permutation to the input and key; since the
+keys are random, permuting them is irrelevant.
+Endianness. Whether we read a message using big-endian or little-endian conventions again can
+be viewed as a bijection on the messages.
+Key Shift. In our proof of Theorem 5.1 we shifted our key by two words to acquire the “next” key.
+In some cases we may wish to shift by more than two words for performance reasons (speciﬁcally
+in the MMX implementations). As noted in the comment following that proof, a larger shift does
+not invalidate the argument.
+
+
+8     From Hash to MAC
+In this section we describe a way to make a secure MAC from an -AU family of hash functions
+(with small ) and a secure pseudorandom function (PRF). We also describe some constructions
+for suitable PRFs. We begin with the formal deﬁnitions for MACs and PRFs.
+
+8.1   Security Definitions
+MACs And Their Security. For this paper a MAC scheme Σ = (Key, Tag) consists of two
+things: a key generator Key and a tag generator Tag. There are also four associated nonempty
+sets: Key, which denotes the set of possible keys, and Message, Nonce, and Tag, which are sets of
+strings. The sets Nonce and Tag are ﬁnite, with Nonce = {0, 1}η and Tag = {0, 1}τ . These diﬀerent
+sets are used to describe the domain and range of Key and Tag, as we now explain.
+    The key generator Key takes no arguments and probabilistically produces an element Key ∈
+Key. This process is denoted Key ← Key(). The tag generator Tag takes Key ∈ Key, M ∈
+Message, and Nonce ∈ Nonce, and deterministically yields Tag ∈ Tag. The ﬁrst argument to Tag
+will be written as a subscript, as in Tag = TagKey (M, Nonce).
+    An adversary F for attacking MAC scheme Σ = (Key, Tag) is an algorithm with access to two
+oracles, denoted Tag and Vf. Speciﬁcally, F ’s oracles behave as follows. First the key generator
+is run to compute Key ← Key(). From then on, when presented with a query (M, Nonce) ∈
+Message × Nonce, the Tag oracle returns TagKey (M, Nonce). (If the query (M, Nonce) is outside
+of the indicated domain, the oracle returns the empty string.) When presented with a query
+(M, Nonce, Tag) ∈ Message × Nonce × Tag, the Vf oracle returns 1 if TagKey (M, Nonce) = Tag,
+
+
+
+                                               20
+and it returns 0 otherwise. (If the query (M, Nonce, Tag) is outside of the indicated domain, the
+oracle returns 0.) To disallow replay attacks and meet other goals one can, alternatively, make the
+Vf oracle stateful and more restrictive with when it returns 1. We will not pursue these possibilities
+here.
+    In an execution of an adversary with her oracles, she is said to forge, or succeed, if she asks
+the Vf oracle some query (M, Nonce, Tag) which returns 1 even though (M, Nonce) was not an
+earlier query to the Tag oracle. The success of adversary F in attacking Σ, denoted Succmac   Σ (F ),
+is the probability that F succeeds. Informally, a MAC scheme Σ is good if for every reasonable
+adversary F the value Succmac Σ (F ) is suitably small. To talk of this conveniently, we overload the
+notation and let Succmac
+                      Σ   (t, qs , qv , μ) be the maximal value of Succmac
+                                                                       Σ (F ) among adversaries that
+run in time at most t, ask at most qs Tag queries, ask at most qv Vf queries, and all of these
+queries total at most μ bits. One assumes some ﬁxed RAM model of computation and running
+time is understood to mean the actual running time plus the size of the program description.
+Remarks. Our notion for MAC security is very strong, insofar as we have let the adversary
+manipulate the nonce (just so long as they are nonces), and then we regarded the adversary as
+successful if she could forge any new message (or even an old message, but with a nonce diﬀerent
+from any already used for it). In actuality we expect the nonce to be a counter which is not under
+the adversary’s control. Our notion of security says that even if the adversary could control the
+nonce, still she would be unable to forge, even in a very weak sense.
+    The deﬁnition above explicitly allows veriﬁcation queries. This deﬁnitional choice is pretty
+inconsequential, in the following sense: Succmac                             mac
+                                               Σ (t, qs , qv , μ) ≤ qv · SuccΣ (t + O(μ), qs , 1, μ) for any
+MAC scheme Π. That is, suppose we allowed only one veriﬁcation query. This is equivalent to
+having the adversary output her one and only attempt at a forgery, (M, Nonce, Tag), at the end of
+her execution. Then generalizing (as our deﬁnition does) to qv ≥ 1 veriﬁcation queries will increase
+the adversary’s chance of success by at most qv . The proof is simple and the observation is well
+known, so a proof is omitted. But we will use this fact in the proof of Lemma 8.1.
+    For substantial qv the value Succmac
+                                     Σ (t, qs , qv , μ) may become larger than desired. For this reason
+it may be necessary to architecturally limit qv to 1—for example, by tearing down a connection
+when a forgery attempt is detected. There are further approaches to keeping Succmac        Σ (t, qs , qv , μ)
+small when one is imagining qv large.
+PRFs And Their Security. A pseudorandom function (PRF) (with key-length α, arbitrary
+argument length, and output-length β) is a family of functions F : {0, 1}α × {0, 1}∗ → {0, 1}β . (See
+Section 4.1). Let Rand(β) be the family of functions from {0, 1}∗ to {0, 1}β in which choosing a
+random ρ ← Rand(β) means associating to each string x ∈ {0, 1}∗ a random string ρ(x) ∈ {0, 1}β .
+    An adversary D for attacking the PRF F : {0, 1}α × {0, 1}∗ → {0, 1}β is given an oracle g
+which is either a random element of F or a random element of Rand(β). The adversary tries to
+distinguish these two possibilities. Her advantage is deﬁned as Advprf
+                                                                    F (D) = Pra∈{0,1} [D
+                                                                                     α   Fa (·) = 1]−
+
+Prρ∈Rand(β) [D ρ(·) = 1]. Informally, a PRF F is good if for every reasonable adversary D the value
+AdvF (D) is small. To talk of this conveniently we overload the notation and let AdvprfF (t, q, μ) be
+                            prf
+the maximal value of AdvF (D) among adversaries that run in time at most t, ask at most q oracle
+queries, and these queries total at most μ bits.
+
+8.2    Definition of the PRF(HASH, Nonce) Construction
+We use a family of (hash) functions H = {h : {0, 1}∗ → {0, 1}∗ } and a family of (random or
+pseudorandom) functions F = {f : {0, 1}∗ → {0, 1}τ }. These are parameters of the construction.
+
+
+
+                                                     21
+We also ﬁx a set Nonce = {0, 1}η and an “encoding scheme” ·, ·. The encoding scheme is a
+linear-time computable function that maps a string HM ∈ {0, 1}∗ and Nonce ∈ Nonce into a string
+HM , Nonce of length |HM |+|Nonce|+O(1) from which, again in linear time, one can recover HM
+and Nonce. The MAC scheme UMAC[H, F] = (Key, Tag) is then deﬁned as follows:
+
+                       function Key ()              function Tag(f,h) (M, Nonce)
+                          f ←F
+                          h←H                          return f ( h(M ), Nonce )
+                          return (f, h)
+
+The keyspace for this MAC is Key = H × F; that is, a random key for the MAC is a random hash
+function h ∈ H together with a random function f ∈ F.
+Analysis. We begin with the information-theoretic version of the scheme.
+
+Lemma 8.1 Let  ≥ 0 be a real number and let H = {h : {0, 1}∗ → {0, 1}∗ } be an -AU family
+of hash functions. Let τ ≥ 1 be a number and let Σ = UMAC[H, Rand(τ )] be the MAC scheme
+described above. Then for every adversary F that makes at most qv verification queries we have
+that Succmac               −τ
+         Σ (F ) ≤ qv ( + 2 ).
+
+
+Proof: First assume that F prepares a single veriﬁcation query which, without loss of gener-
+ality, is its last oracle query. Run adversary F in the experiment which deﬁnes success in at-
+tacking Σ = (Key, Tag). In this experiment the adversary is provided an oracle which behaves
+as follows. First it chooses a random ρ ← Rand(τ ) and h ← H. Now F asks the sequence
+of tag-generation queries (M1 , Nonce1 ), . . . , (Mq , Nonceq ), getting responses Tag1 , . . . , Tagq , where
+Tagi = Tag(ρ,h) (h(Mi ), Noncei ). Based on these answers (and possibly internal coin ﬂips) the
+adversary produces its veriﬁcation query (M, Nonce, Tag). Since we are bounding from above the
+probability that F is successful we may assume of F ’s behavior that Nonce1 , . . . , Nonceq are distinct
+and that (M, Nonce) ∈ {(M1 , Nonce1 ), . . . , (Mq , Nonceq )} for otherwise, by deﬁnition, F does not
+succeed. Let Forge be the event that the adversary is successful: Tag = ρ(h(M ), Nonce). Let
+yj = Mj , Noncej  for 1 ≤ j ≤ q and let y = M, Nonce. Note that y1 , . . . , yq are distinct, since
+Nonce1 , . . . Nonceq are distinct and ·, · is a (reversible) encoding.
+Let Repeat be the event that Nonce ∈ {Nonce1 , . . . , Nonceq }. Observe that Pr[Forge|Repeat] ≤ 2−τ
+since when Repeat holds the adversary must predict σ(y) given σ(y1 ), . . . , σ(yq ), where y1 , . . . , yq
+are all distinct from y.
+We wish to bound Pr[Forge|Repeat]. Let i be the index such that Nonce = Noncei . There is a
+unique such i since Nonce1 , . . . , Nonceq are distinct and Nonce is among them. Let Collision be
+the event that Repeat holds and h(M ) = h(Mi ). We note that Pr[Forge|Collision] ≤ 2−τ since, as
+before, the adversary must predict σ(y) having seen only σ(y1 ), . . . , σ(yq ), where y ∈ {y1 , . . . , yq }.
+We claim Pr[Collision] ≤ . By deﬁnition of H being -AU we know if one chooses a random h ← H
+and gives the adversary no information correlated to h then the adversary’s chance of producing
+distinct M and Mi which collide under h is at most . The point to note is that the adversary has,
+in fact, obtained no information correlated to h. In response to her queries she obtains the images
+under ρ of the distinct points y1 , . . . , yq . These values, Tag1 , . . . , Tagq , are random τ -bit strings;
+the adversary F would be provided an identical distribution of views if the oracle were replaced by
+one which, in response to a query, returned a random τ -bit string.
+
+
+
+
+                                                      22
+The result now follows. We have that Pr[Forge] ≤ max{Pr[Forge|Repeat], Pr[Forge|Repeat]}, with
+the second expression being at most 2−τ . On the other hand,
+
+      Pr[Forge|Repeat] = Pr[Forge|Collision] Pr[Collision] + Pr[Forge|Collision] Pr[Collision]
+                         ≤ Pr[Collision] + Pr[Forge|Collision]
+                         ≤  + 2−τ ,
+
+as we have argued. We conclude that Pr[Forge] ≤  + 2−τ . To ﬁnish the proof, use the observation,
+mentioned in the Remarks of Section 8.1, that allowing qv veriﬁcation queries at most increases the
+adversary’s chance of success by a multiplicative factor of qv .
+In the usual way we can extend the above information-theoretic result to the complexity-theoretic
+setting of interest to applications. Roughly, we prove that if the hash-function family is -AU and
+no reasonable adversary can distinguish the PRF from a truly random function with advantage
+exceeding δ then no reasonable adversary can break the resulting MAC scheme with probability
+exceeding  + δ.
+    To make this formal, we use the following notations. If H is a family of hash functions then
+TimeH is an amount of time adequate to compute a representation for a random h ← H, while
+Timeh (μ) is an amount of time adequate to evaluate h on strings whose lengths total μ bits.
+    The proof of the following, being standard, is omitted.
+
+Theorem 8.2 Let  ≥ 0 be a real number, let H = {h : {0, 1}∗ → {0, 1}∗ } be an -AU family
+of hash functions, let τ ≥ 1 be a number and let F : {0, 1}α × {0, 1}∗ → {0, 1}τ be a PRF. Let
+Σ = UMAC[H, F] be the MAC scheme described above. Then
+                                                  prf   
+                      Succmac                                               −τ
+                          Σ (t, qs , qv , μ) ≤ AdvF (t , q , μ ) + qv ( + 2 )
+
+where t = t + TimeH + Timeh (μ) + O(μ) and q  = qs + qv and μ = O(μ).
+
+8.3   Discussion
+We have now deﬁned the PRF(HASH, Nonce) construction, but we wish to make a couple of
+comments about it.
+Comparison With Carter-Wegman Method. Compared to the original suggestion of [27],
+where one encrypts the hash of the message by XOR-ing with a one-time pad, we require a weaker
+assumption about the hash-function family H: it need only be -AU. The original approach of [27]
+needs of H the stronger property of being “XOR almost-universal” [17]: for all distinct M, M  and
+for all C, one must have that Prh [h(M )⊕h(M  ) = C] ≤ . Furthermore, it is no problem for us that
+the range of h ∈ H has strings of unbounded length, while the hash functions used for [27] should
+have ﬁxed-length output. On the other hand, our cryptographic tool is eﬀectively stronger than
+what the complexity-theoretic version of [27] requires: we need a PRF over {0, 1}∗ (or at least over
+the domain Encoding of possible HM , Nonce encodings), while the complexity-theoretic analog
+of [27] could conveniently use a (ﬁxed-output-length) PRF on the ﬁxed-length strings Nonce. The
+security bound one gets is the same; both constructions are as good as one could hope for, from
+the point of view of concrete security.
+Comparison With PRF(HASH) Construction. Let us now clarify the role of the nonce in the
+PRF(HASH, Nonce) scheme. The nonce is essential, in the sense that in its absence the quantitative
+
+
+
+                                                23
+security bounds are much worse and unacceptable for many applications. Let UMAC[H, F] be the
+scheme which is the same as UMAC, except that the PRF is applied directly to HM , rather than
+to HM , Nonce. Then the analog of Lemma 8.1 would say the following: Fix a number τ ≥ 1, let
+H = {h : {0, 1}∗ → {0, 1}∗ } be an -AU family of hash functions, and let Σ = UMAC[H, Rand(τ )]
+be the MAC scheme described above. Then for every adversary F , Succmac              2     −τ
+                                                                          Σ (F ) ≤ q  + 2 .
+                                                     −τ
+    This is a far cry from our earlier bound of  + 2 . Instead of security which is independent of
+the number of tags acquired, q, security degrades with the square of that number. When q = −1/2 ,
+there is no security left.
+    It is important to note that this is not a problem with the analysis, but with the scheme itself.
+If one asks −1/2 oracle queries of UMAC then, by the birthday bound, there is a good chance to
+ﬁnd distinct messages, M1 and M2 , which yield the same authentication tag. If τ is large then
+this implies that, with high probability, the hash of M1 equals the hash of M2 . This is crucial
+information about the hash function which has now been leaked. In particular, for some -AU
+hash-function families knowing that M1 and M2 collide immediately tells us some third message
+M3 which collides with both of them. The adversary can now forge an authentication tag for this
+message.
+    The conclusion is that the nonce in the PRF(HASH, Nonce)-scheme cannot be removed. For
+example, without it, using a 2−32 -AU hash function would let you authenticate fewer than 216
+messages, which is usually insuﬃcient.
+
+8.4   Realizing the PRF
+A complete speciﬁcation of UMAC must describe how to make the requisite PRF. Under our
+construction the domain of the PRF needs to be strings of arbitrary lengths. The speciﬁcation
+associated to this paper [6] suggests two ways of realizing such PRFs: one using a cryptographic hash
+function and using a secure block cipher. Let us brieﬂy describe the two suggested constructions.
+The second is somewhat novel.
+From A Cryptographic Hash Function. Given a cryptographic hash function H (e.g., SHA-1)
+we can use HMAC based on H as our PRF [3, 13]. This method deﬁnes the PRF F to be
+FA (M ) = H(A ⊕ opad  H(A ⊕ ipad  M )), where |A| is, typically, the blocksize of H (i.e.,
+512 bits for all well-known constructions) and opad and ipad are distinct |A|-bit constants. This
+construction is shown in [3] to be a PRF under weak (though nonstandard) assumptions about H.
+From A Block Cipher. We use a new variant of the CBC-MAC in order to turn a block cipher E
+into a PRF F which operates over arbitrary-length inputs. Our CBC-MAC variant is more eﬃcient
+than earlier suggestions but can still be proven secure when E is a good block cipher.
+    Let E : {0, 1}α × {0, 1}β → {0, 1}β be the block cipher. We deﬁne FK1  K2  K3 (M ), where
+|K1 | = |K2 | = |K3 | = α and M ∈ {0, 1}∗ , as follows.
+    If M contains an integral number of blocks (i.e., |M | is a nonzero multiple of β) then apply
+the “basic” CBC-MAC construction to M except use key K2 for encrypting the last block and
+use key K1 for encrypting the earlier ones. More precisely, writing M = M1  · · ·  Mn , where
+|M1 | = · · · = |Mn | = β, and letting y0 = 0β , set yi = EK1 (Mi ⊕ yi−1 ) for 1 ≤ i < n, and then
+deﬁne FK1  K2  K3 (M ) as EK2 (Mn ⊕ yn−1 ).
+    If |M | = 0 or |M | is not a multiple of β then append to M a 1-bit and then the minimum
+number of 0-bits so that the resulting string M  will have length which is a multiple of β. Now
+proceed as above, but using key K3 in lieu of K2 : that is, writing M  = M1  · · ·  Mn , where
+|M1 | = · · · = |Mn | = β, and letting y0 = 0β , set yi = EK1 (Mi ⊕yi−1 ) for 1 ≤ i < n, and then deﬁne
+FK1  K2  K3 (M ) as EK3 (Mn ⊕yn−1 ).
+
+
+
+                                                   24
+    Building on [20], which in turn builds on [4], it is possible to show that if E is a good PRF (on
+its domain) then F is a good PRF (on its domain). The quantitative bounds are as in [20]. Further
+details are omitted.
+    We comment that since FA is being applied to adversarially-unknown points, even if it were to
+have some cryptographic weakness as a PRF, still this might not, by itself, lead to the resulting
+MAC being insecure. This is true regardless of how the PRF F is realized.
+
+
+9    Directions
+An interesting possibility (suggested to us by researchers at NAI Labs—see acknowledgments) is
+to restructure UMAC so that a receiver can verify a tag to various forgery probabilities—e.g.,
+changing UMAC-MMX-60 to allow tags to be veriﬁed, at increasing cost, to forging probabilities
+of 2−15 , 2−30 , 2−45 , or 2−60 . Such a MAC need be no longer than it is now, and perhaps it need
+take no longer to generate. Such a feature is particularly attractive for authenticating broadcasts
+to receivers of diﬀerent security policies or computational capabilities.
+    Our eﬀorts to further improve upon UMAC continue, and, at the time of this writing, are
+working on a new version of the speciﬁcation document. We expect that UMAC 2.0, as we are
+calling it, will be a little bit faster and simpler than what we have currently speciﬁed in [6]. It will
+also achieve the property mentioned above, and it will no longer require a variable-input-length
+PRF. Additionally, the speciﬁcation document will “export” the underlying hash function, for use
+in contexts beyond message authentication.
+    For the authors, who like to mix up theory and practice, the development of UMAC has involved
+an unprecedented intermixing of theory, experimentation, and painstaking engineering. We think
+that this has led to a MAC which is faster and more versatile than anything you could devise in
+the absence of any of these three elements. Thus we hope that UMAC will not only get used, but
+will help further the underlying design approach we used.
+    Finally, we comment that, to the best of our knowledge, UMAC is completely patent unencum-
+bered.
+
+
+Acknowledgments
+Thanks to Mihir Bellare and the CRYPTO ’99 Committee for their suggestions. Thanks to Dave
+Balenson and Dave Carman (of NAI Labs, the security research division of Network Associates;
+DARPA F30602-98-C-0215) for the idea mentioned in Section 9. Thanks to them, and to Bill
+Aiello, for pointing out the usefulness of high-forgery-probability MACs, such as UMAC-MMX-15,
+to applications like telephony and multimedia.
+    Rogaway, Black, and Krovetz were supported by Rogaway’s NSF CAREER Award CCR-962540,
+and by MICRO grants 97-150 and 98-129, funded by RSA Data Security, Inc., and ORINCON Cor-
+poration. Much of Rogaway’s work was carried out while on sabbatical at Chiang Mai University,
+under Prof. Krisorn Jittorntrum and Prof. Darunee Smawatakul.
+
+
+References
+ [1] Afanassiev, V., Gehrmann, C., and Smeets, B. Fast message authentication using eﬃcient poly-
+     nomial evaluation. In Proceedings of the 4th Workshop on Fast Software Encryption (1997), vol. 1267,
+     Springer-Verlag, pp. 190–204.
+
+
+
+
+                                                   25
+ [2] Ansi X9.9. American national standard — Financial institution message authentication (wholesale).
+     ASC X9 Secretariat – American Bankers Association, 1986.
+ [3] Bellare, M., Canetti, R., and Krawczyk, H. Keying hash functions for message authentication.
+     In Advances in Cryptology – CRYPTO ’96 (1996), vol. 1109 of Lecture Notes in Computer Science,
+     Springer-Verlag, pp. 1–15.
+ [4] Bellare, M., Kilian, J., and Rogaway, P. The security of cipher block chaining. In Advances
+     in Cryptology – CRYPTO ’94 (1994), vol. 839 of Lecture Notes in Computer Science, Springer-Verlag,
+     pp. 341–358.
+ [5] Bernstein, D. Guaranteed message authentication faster than MD5. Unpublished manuscript, 1999.
+ [6] Black, J., Halevi, S., Hevia, A., Krawczyk, H., Krovetz, T., and Rogaway, P.
+     UMAC — Message authentication code using universal hashing. Unpublished speciﬁcation,
+     www.cs.ucdavis.edu/~rogaway/umac, 1999.
+ [7] Black, J., Halevi, S., Krawczyk, H., Krovetz, T., and Rogaway, P. UMAC: Fast and secure
+     message authentication. In Advances in Cryptology – CRYPTO ’99 (1999), vol. 1666 of Lecture Notes
+     in Computer Science, Springer-Verlag, pp. 216–233.
+ [8] Brassard, G. On computationally secure authentication tags requiring short secret shared keys. In
+     Advances in Cryptology – CRYPTO ’82 (1983), Springer-Verlag, pp. 79–86.
+ [9] Carter, L., and Wegman, M. Universal hash functions. J. of Computer and System Sciences, 18
+     (1979), 143–154.
+[10] Etzel, M., Patel, S., and Ramzan, Z. Square hash: Fast message authentication via optimized
+     universal hash functions. In Advances in Cryptology – CRYPTO ’99 (1999), vol. 1666 of Lecture Notes
+     in Computer Science, Springer-Verlag, pp. 234–251.
+[11] FIPS 180-1. Secure hash standard. NIST, US Dept. of Commerce, 1995.
+[12] Goldwasser, S., Micali, S., and Rivest, R. A digital signature scheme secure against adaptive
+     chosen-message attacks. SIAM Journal of Computing 17, 2 (Apr. 1988), 281–308.
+[13] H. Krawczyk, M. B., and Canetti, R. HMAC: Keyed hashing for message authentication. IETF
+     RFC-2104, 1997.
+[14] Halevi, S., and Krawczyk, H. MMH: Software message authentication in the Gbit/second rates.
+     In Proceedings of the 4th Workshop on Fast Software Encryption (1997), vol. 1267, Springer-Verlag,
+     pp. 172–189.
+[15] Johansson, T. Bucket hashing with small key size. In Advances in Cryptology – EUROCRYPT ’97
+     (1997), Lecture Notes in Computer Science, Springer-Verlag.
+[16] Kaliski, B., and Robshaw, M. Message authentication with MD5, 1995. Technical newsletter of
+     RSA Laboratories.
+[17] Krawczyk, H. LFSR-based hashing and authentication. In Advances in Cryptology – CRYPTO ’94
+     (1994), vol. 839 of Lecture Notes in Computer Science, Springer-Verlag, pp. 129–139.
+[18] Mansour, Y., Nissan, N., and Tiwari, P. The computational complexity of universal hashing.
+     In Proceedings of the Twenty Second Annual ACM Symposium on Theory of Computing (1990), ACM
+     Press, pp. 235–243.
+[19] Nevelsteen, W., and Preneel, B. Software performance of universal hash functions. In Advances
+     in Cryptology — EUROCRYPT ’99 (1999), vol. 1592 of Lecture Notes in Computer Science, Springer-
+     Verlag, pp. 24–41.
+[20] Petrank, E., and Rackoff, C. CBC MAC for real-time data sources.              Manuscript 97-10 in
+     http://philby.ucsd.edu/cryptolib.html, 1997.
+
+
+
+
+                                                  26
+[21] Preneel, B., and van Oorschot, P. MDx-MAC and building fast MACs from hash functions.
+     In Advances in Cryptology — CRYPTO ’95 (1995), vol. 963 of Lecture Notes in Computer Science,
+     Springer-Verlag, pp. 1–14.
+[22] Preneel, B., and van Oorschot, P. On the security of two MAC algorithms. In Advances in
+     Cryptology — EUROCRYPT ’96 (1996), vol. 1070 of Lecture Notes in Computer Science, Springer-
+     Verlag, pp. 19–32.
+[23] Rivest, R., Robshaw, M., Sidney, R., and Yin, Y. The RC6 block cipher. Available from
+     http://theory.lcs.mit.edu/~rivest/publications.html, 1998.
+[24] Rogaway, P. Bucket hashing and its application to fast message authentication. In Advances in
+     Cryptology – CRYPTO ’95 (1995), vol. 963 of Lecture Notes in Computer Science, Springer-Verlag,
+     pp. 313–328.
+[25] Shoup, V. On fast and provably secure message authentication based on universal hashing. In Advances
+     in Cryptology – CRYPTO ’96 (1996), vol. 1109 of Lecture Notes in Computer Science, Springer-Verlag,
+     pp. 74–85.
+[26] Tsudik, G. Message authentication with one-way hash functions. In Proceedings of Infocom ’92 (1992),
+     IEEE Press.
+[27] Wegman, M., and Carter, L. New hash functions and their use in authentication and set equality.
+     In J. of Comp. and System Sciences (1981), vol. 22, pp. 265–279.
+
+
+
+
+                                                   27
+

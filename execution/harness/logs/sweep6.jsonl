@@ -1,0 +1,8 @@
+### ./run_native B 2 30 48 main 1500 (start 2026-09-18T14:30:22+00:00)
+{"event":"start","mode":"B","b":2,"dispatch":"V2Sse2","sub":"main","requested_trials":1073741824,"threads":48,"key_words":8866,"rng":"AES-128-CTR, getrandom seed, stream=thread","seed_hex":"dbe4b282d702befe0c3036abd86dc68b"}
+{"event":"result","mode":"B","b":2,"dispatch":"V2Sse2","sub":"main","pair":"len65536_vs_len131072","len_a":65536,"len_b":131072,"trials":1073741824,"hits":0,"high32_key6_zero":0,"miss_when_zero":0,"hit_when_nonzero":0,"high32_key6_zero":0,"variant2_agrees_with_high32":0,"key_dumps_emitted":0,"checksum":1210638843663851000,"seconds":351.914,"seed_hex":"dbe4b282d702befe0c3036abd86dc68b"}
+### done 2026-09-18T14:36:14+00:00
+### ./run_native B 1 30 48 main 1500 (start 2026-09-18T14:36:14+00:00)
+{"event":"start","mode":"B","b":1,"dispatch":"V1Scalar","sub":"main","requested_trials":1073741824,"threads":48,"key_words":8866,"rng":"AES-128-CTR, getrandom seed, stream=thread","seed_hex":"a47f1ed504436d1cf5c9239e80ca3e32"}
+{"event":"result","mode":"B","b":1,"dispatch":"V1Scalar","sub":"main","pair":"len65536_vs_len131072","len_a":65536,"len_b":131072,"trials":1073741824,"hits":0,"high32_key6_zero":0,"miss_when_zero":0,"hit_when_nonzero":0,"high32_key7_zero":0,"variant2_agrees_with_high32":0,"key_dumps_emitted":0,"checksum":14759180729581043361,"seconds":789.531,"seed_hex":"a47f1ed504436d1cf5c9239e80ca3e32"}
+### done 2026-09-18T14:49:24+00:00

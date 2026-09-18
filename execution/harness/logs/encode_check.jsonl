@@ -1,0 +1,9 @@
+{"event":"encode3_dependence","parity_blocks":{"io[7][0]":"0x1","io[7][1]":"0x2","io[7][2]":"0x4","io[8][0]":"0x3","io[8][1]":"0x6","io[8][2]":"0xc"},"comment":"bit i set means encoded block depends on input block i"}
+{"event":"encode3_distance","flipped_input_block":0,"changed_encoded_blocks":3,"changed_encoded_symbols":3}
+{"event":"encode3_distance","flipped_input_block":3,"changed_encoded_blocks":2,"changed_encoded_symbols":2}
+{"event":"encode3_distance","flipped_input_block":6,"changed_encoded_blocks":1,"changed_encoded_symbols":1}
+{"event":"encode3_distance","flipped_input_block":7,"changed_encoded_blocks":1,"changed_encoded_symbols":1}
+{"event":"encode3_distance","flipped_input_block":18,"changed_encoded_blocks":1,"changed_encoded_symbols":1}
+{"event":"encode2_distance","flipped_input_block":0,"changed_encoded_blocks":2,"changed_encoded_symbols":2}
+{"event":"encode2_distance","flipped_input_block":6,"changed_encoded_blocks":2,"changed_encoded_symbols":2}
+{"event":"encode2_distance","flipped_input_block":17,"changed_encoded_blocks":2,"changed_encoded_symbols":2}

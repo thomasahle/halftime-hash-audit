@@ -1,0 +1,71 @@
+after leaf C8+1: 1 1 1 1 1 1 1 1 1 (no zero sentinel remains)
+=================================================================
+==2067470==ERROR: AddressSanitizer: stack-buffer-overflow on address 0x7b039a003da4 at pc 0x0000004f10da bp 0x7ffc39c2e390 sp 0x7ffc39c2e388
+READ of size 4 at 0x7b039a003da4 thread T0
+    #0 0x0000004f10d9 in halftime_hash::advanced::(anonymous namespace)::EhcBadger<halftime_hash::advanced::(anonymous namespace)::BlockWrapperScalar, 6u, 3u, 7u, 2u, 8u>::DfsGreedyFinalizer(unsigned long const (*) [8][2], int const*, char const*, unsigned long, unsigned long const*, unsigned long*) /home/thomas-ahle/agents/halftime-wrapper/review-support/wrapper-cert/../../halftime-current.hpp:686:21
+    #1 0x0000004ef15a in stack_boundary() /home/thomas-ahle/agents/halftime-wrapper/review-support/wrapper-cert/layout-check.cpp:60:5
+    #2 0x0000004ef15a in main /home/thomas-ahle/agents/halftime-wrapper/review-support/wrapper-cert/layout-check.cpp:69:29
+    #3 0x7f039b82a60f in __libc_start_call_main (/lib64/libc.so.6+0x2a60f) (BuildId: 1d8f179b27940f18b0f435ecf74f2fa448b72dd4)
+    #4 0x7f039b82a6bf in __libc_start_main@GLIBC_2.2.5 (/lib64/libc.so.6+0x2a6bf) (BuildId: 1d8f179b27940f18b0f435ecf74f2fa448b72dd4)
+    #5 0x000000400934 in _start (/home/thomas-ahle/agents/halftime-wrapper/review-support/wrapper-cert/layout-check+0x400934) (BuildId: b3fcce1c53cb6d753671ac8aae0953645905096f)
+
+Address 0x7b039a003da4 is located in stack of thread T0 at offset 15780 in frame
+    #0 0x0000004ec977 in main /home/thomas-ahle/agents/halftime-wrapper/review-support/wrapper-cert/layout-check.cpp:64
+
+  This frame has 21 object(s):
+    [64, 9280) 'stack' (line 34)
+    [9536, 14144) 'stack' (line 34)
+    [14400, 14416) 'output'
+    [14432, 14433) '__c.addr'
+    [14448, 14449) '__c.addr'
+    [14464, 15616) 'stack' (line 50)
+    [15744, 15780) 'lengths' (line 51) <== Memory access at offset 15780 overflows this variable
+    [15824, 15968) 'leaf' (line 52)
+    [16032, 16048) 'out' (line 59)
+    [16064, 16100) 'lengths' (line 35)
+    [16144, 17296) 'tail' (line 36)
+    [17424, 17460) 'lengths' (line 35)
+    [17504, 18080) 'tail' (line 36)
+    [18208, 20512) 'stack' (line 34)
+    [20640, 20676) 'lengths' (line 35)
+    [20720, 21008) 'tail' (line 36)
+    [21072, 22224) 'stack' (line 34)
+    [22352, 22388) 'lengths' (line 35)
+    [22432, 22576) 'tail' (line 36)
+    [22640, 22672) 'mode' (line 67)
+    [22704, 22705) 'x' (line 71)
+HINT: this may be a false positive if your program uses some custom stack unwind mechanism, swapcontext or vfork
+      (longjmp and C++ exceptions *are* supported)
+SUMMARY: AddressSanitizer: stack-buffer-overflow /home/thomas-ahle/agents/halftime-wrapper/review-support/wrapper-cert/../../halftime-current.hpp:686:21 in halftime_hash::advanced::(anonymous namespace)::EhcBadger<halftime_hash::advanced::(anonymous namespace)::BlockWrapperScalar, 6u, 3u, 7u, 2u, 8u>::DfsGreedyFinalizer(unsigned long const (*) [8][2], int const*, char const*, unsigned long, unsigned long const*, unsigned long*)
+Shadow bytes around the buggy address:
+  0x7b039a003b00: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x7b039a003b80: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x7b039a003c00: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x7b039a003c80: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x7b039a003d00: f2 f2 f2 f2 f2 f2 f2 f2 f2 f2 f2 f2 f2 f2 f2 f2
+=>0x7b039a003d80: 00 00 00 00[04]f2 f2 f2 f2 f2 00 00 00 00 00 00
+  0x7b039a003e00: 00 00 00 00 00 00 00 00 00 00 00 00 f2 f2 f2 f2
+  0x7b039a003e80: f2 f2 f2 f2 00 00 f2 f2 f8 f8 f8 f8 f8 f2 f2 f2
+  0x7b039a003f00: f2 f2 f8 f8 f8 f8 f8 f8 f8 f8 f8 f8 f8 f8 f8 f8
+  0x7b039a003f80: f8 f8 f8 f8 f8 f8 f8 f8 f8 f8 f8 f8 f8 f8 f8 f8
+  0x7b039a004000: f8 f8 f8 f8 f8 f8 f8 f8 f8 f8 f8 f8 f8 f8 f8 f8
+Shadow byte legend (one shadow byte represents 8 application bytes):
+  Addressable:           00
+  Partially addressable: 01 02 03 04 05 06 07 
+  Heap left redzone:       fa
+  Freed heap region:       fd
+  Stack left redzone:      f1
+  Stack mid redzone:       f2
+  Stack right redzone:     f3
+  Stack after return:      f5
+  Stack use after scope:   f8
+  Global redzone:          f9
+  Global init order:       f6
+  Poisoned by user:        f7
+  Container overflow:      fc
+  Array cookie:            ac
+  Intra object redzone:    bb
+  ASan internal:           fe
+  Left alloca redzone:     ca
+  Right alloca redzone:    cb
+==2067470==ABORTING

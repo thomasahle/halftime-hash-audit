@@ -1,0 +1,720 @@
+Message Authentication on 64-bit Architectures
+
+                                   Ted Krovetz
+
+                         Department of Computer Science
+              California State University, Sacramento CA 95819 USA
+
+
+
+      Abstract. This paper introduces VMAC, a message authentication al-
+      gorithm (MAC) optimized for high performance in software on 64-bit
+      architectures. On the Athlon 64 processor, VMAC authenticates 2KB
+      cache-resident messages at a cost of about 0.5 CPU cycles per message
+      byte (cpb) — significantly faster than other recent MAC schemes such
+      as UMAC (1.0 cpb) and Poly1305 (3.1 cpb). VMAC is a MAC in the
+      Wegman-Carter style, employing a “universal” hash function VHASH,
+      which is fully developed in this paper. VHASH employs a three-stage
+      hashing strategy, and each stage is developed with the goal of optimal
+      performance in 64-bit environments.
+
+
+ Keywords: Message authentication, universal hashing, architectural optimization.
+
+            I personally believe there are two main architectures out
+        there: Power and x86-64 [both of which are 64-bit architectures].
+                                                        — Linus Torvalds, 2005.
+
+
+
+1   Introduction
+Over the years, as design and manufacturing techniques have improved, and
+demand for memory addressability has increased, register lengths have become
+longer. The recent adoption of 64-bit register architectures for mainstream pro-
+cessors from IBM, Intel and Advanced Micro Devices is a natural evolution in
+this process. It is reasonable to believe that, just as 32-bit processors did before
+them, 64-bit processors will become dominant not only in servers but also in
+desktops and laptops.
+    Many algorithms, especially in domains where high performance is desirable,
+are designed with optimizations tailored for particular architectures. Changing
+architectures while keeping the same designs can easily lead to suboptimal per-
+formance. This is the case with high-speed message authentication and the move
+from 32-bit to 64-bit architectures. The fastest reported software-optimized mes-
+sage authentication algorithms (or MACs) are all designed to run well on 32-bit
+architectures [5, 6, 9]. While these MACs generally work equally well on both
+32- and 64-bit architectures — because the newer architectures support older
+instructions at full speed — they are not designed to take advantage of new
+capabilities found in 64-bit processors. As an example consider UMAC, which
+                               0.5
+
+
+                                1
+
+
+                                2
+         Speed (cycles/byte)
+
+
+
+                                4
+
+
+                                8
+
+
+                               16
+                                                                                      VMAC
+                                                                                    UMAC-64
+                               32                                                  VMAC-128
+                                                                                   UMAC-128
+                                                                                    Poly1305
+                                                                                  HMAC-SHA1
+                               64
+                                     32   64   128            256           512        1024    2048
+                                                     Message Length (bytes)
+
+
+Fig. 1. Efficiency on the Athlon 64 processor of the hash functions underlying recent
+MACs, measured in CPU cycles per byte of message hashed. VMAC and UMAC-64
+produce 64-bits while the others produce 128 (or 160 for SHA-1).
+
+
+
+was designed specifically for optimal performance on 32-bit architectures [5]. On
+an Athlon 64 processor, UMAC achieves peak speeds of about 1.1 CPU cycles
+per byte of message authenticated (cpb) when it is restricted to using 32-bit
+operands, but improves only slightly to 1.0 cpb when allowed full use of 64-bit
+operands.
+    This paper presents VMAC, the fastest reported MAC on contemporary 64-
+bit processors, achieving peak speeds of 0.5 cpb on the Athlon 64 (and as low as
+0.3 cpb if one allows larger internal keys, see Figure 4). This compares favorably
+with other MACs. Figure 1 shows the performance of the internal hash functions
+of recent high-speed MAC’s.1 (Hash speeds determine a MAC’s relative speed
+because all modern MACs hash their messages first.) Although the main goal of
+the VMAC design effort is high speed on 64-bit processors, VMAC is careful to
+avoid some of the perceived deficiencies of recent high-speed MACs, particularly
+by limiting use of internal hash key (VMAC uses 160 bytes) and avoidance
+of data-dependant side-channel attacks. VMAC has the desirable properties of
+being provably secure, parallelizable, and patent-free.
+
+1
+    Timings in this paper are generated using gcc 4.0 with optimization level -O4 (or
+    -fast if available) and appropriate -march or -mcpu settings. The bulk of perfor-
+    mance claims are based on an AMD Athlon 64 “Manchester” (family 15, model
+    43, stepping 1, L2 cache 512K). Other architectures are reported in Section 3.6. All
+    data 16-byte aligned and in cache. UMAC and Poly1305 timings are made from code
+    obtained at their author’s websites. SHA timings are as reported by OpenSSL.
+Message Authentication. Message authentication is used when parties wish
+to communicate with assurance that received messages come from the claimed
+sender without alteration. All of the fastest MACs follow principles developed by
+Wegman and Carter [3, 5–7, 9, 14]. The basic Wegman-Carter message authenti-
+cation paradigm is for the sender first to hash the message with a hash function
+known only to himself and the receiver. The sender then applies some crypto-
+graphic function (usually encryption) to the resulting hash value, which produces
+a message tag that is sent along with the message to the receiver. The receiver
+can then repeat the process, verifying that the received tag is valid for the re-
+ceived message. In a correctly designed MAC, only those knowing the secret hash
+function and cryptographic keys have a reasonable chance of creating a valid tag
+for any new message. If, however, an adversary is able to produce a valid tag for
+a new message without knowing the hash function and cryptographic keys, then
+a forgery has occurred. Due to their ephemeral nature, communication sessions
+usually need only be secure against forgery during the lifetime of the session.
+If an adversary cannot forge with a probability of more than about 1/260 per
+attempt, then the MAC is likely suitable for most communications where at-
+tackers are not allowed an excessive number of forgery attempts. VMAC and
+UMAC are flexible in their security levels. They are able to produce 64-bit tags
+with forgery probabilities close to 1/260 twice as fast as versions of VMAC and
+UMAC which produce 128-bit tags (which have forgery probabilities closer to
+1/2100 ). Most other MAC schemes, including the ones used for comparison in
+this paper, are not designed for such flexibility. As a result, when making speed
+comparisons with VMAC’s 64-bit tags, other schemes, producing longer tags,
+are unavoidable disadvantaged.
+    The key to speed in a Wegman-Carter MAC is the hash function used. Au-
+thentication speeds are determined by the sum of the (length-dependent) time it
+takes to hash the message being authenticated plus the (constant) time it takes
+to cryptographically produce the tag, so this paper focuses on the hash func-
+tion used in VMAC, known as VHASH. This is reasonable because any speed
+improvements in the cryptographic part of a Wegman-Carter MAC could be
+applied equally to all such schemes, so improvements relative to other Wegman-
+Carter MACs will come almost entirely from improvements in hashing.
+    Notable recent examples of fast hash functions suitable for Wegman-Carter
+message authentication (and peak speeds reported for Intel Pentium 4 processors
+by their authors) are hash127 (around 4.4 cpb), hash1305 (3.4 cpb), Badger (2.2
+cpb) and UMAC (1.0 cpb). The speeds of all of these favorably compare with
+popular non-Wegman-Carter MACs such as HMAC-SHA1 and CBC-AES-MAC,
+both of which require more than 10 cpb.
+
+Universal hashing. The hash function used in a Wegman-Carter MAC must
+be chosen from a universal hash function family. A hash-function family H is a
+collection of hash functions, each h ∈ H having domain A and finite codomain B.
+A hash-function family H is ε-almost universal (ε-AU) if the probability is no
+more than ε that any two distinct inputs m, m′ hash to the same output when
+hashed by a randomly selected member of H. A small value for ε indicates that
+an adversary is unlikely to be able to choose a pair of inputs that hash to the
+same output, as long as the hash function is chosen randomly. A stronger notion
+bounds an adversary’s ability to guess differences between hash outputs. A hash-
+function family H is ε-almost delta universal (ε-A∆U) if the probability is no
+more than ε that h(m) − h(m′ ) = d for any two distinct inputs m, m′ and any
+chosen constant d when hashed by a randomly selected member h of H. There
+are stronger notions of universal hashing defined by Wegman, Carter and Stinson
+[7, 13, 14], but ε-A∆U is adequate for message authentication, and is achieved
+by VHASH.
+
+
+2     Three-Stage Hashing
+VHASH uses a three-stage hashing strategy where each hash stage is made of
+a discrete hash function with a particular purpose. The first stage rapidly com-
+presses by a fixed ratio the message to be hashed, thus reducing the data to
+be processed by later (slower) stages. The second stage hashes the newly com-
+pressed message to a fixed length, and the third stage distills the security of the
+second-stage output into a smaller number of bits. In this section, we investigate
+appropriate primitive hash functions for each stage and develop them for 64-bit
+architectures. In the next section, VHASH is assembled from the functions de-
+scribed here and analyzed for the purposes of message authentication. The first
+MAC to employ a three-stage strategy was UMAC [5, 11].
+
+2.1    Stage 1 – Acceleration
+The goal of the first stage is to act as an accelerant for later hash stages by
+compressing, at a constant ratio, long inputs into shorter ones at very high speed.
+VHASH uses the NH hash family for this purpose, breaking the VHASH input
+into b-bit blocks (the final block may be shorter) and using NH to hash each into
+128 bits. The hashed blocks are then concatenated into a string shorter than the
+original VHASH input. When b is set at 1,024 bits (as we later recommend), the
+compression is 8:1 for messages whose length is a multiple of 1,024.
+    NH was originally designed as a parameterized hash function [5]. Given posi-
+tive integer parameters n and w and a key K of length nw bits, then NH can hash
+any string M that is a multiple of 2w bits in length but not longer than nw bits.
+First M and K are broken into w-bit blocks M1 , M2 , . . . , Mℓ and K1 , K2 , . . . Kn
+where ℓ = |M |/w. Then, each block is interpreted as a w-bit unsigned binary
+integer m1 , m2 , . . . , mℓ and k1 , k2 , . . . kn . Finally, the hash result is computed as
+
+                      X
+                      ℓ/2
+NH[n, w](K, M ) =           ((m2i−1 +k2i−1 mod 2w )×(m2i +k2i mod 2w )) mod 22w .
+                      i=1
+
+NH is a hash family, and choosing a random function from the hash family
+is done by choosing a random nw-bit key K. NH is known to be (2−w )-A∆U
+over messages of the same length (ie, M and M ′ are distinct, but |M | = |M ′ |),
+and small modifications to the original proof show that NH is (2−w )-A∆U over
+messages that are any multiple of 2w bits in length (but still no longer than nw
+bits). In the context of VHASH, w = 64 and nw = b is suggested 1,024.
+Characteristics. The chief advantage of NH is extreme speed. Every opera-
+tion is done naturally and efficiently on contemporary processors if w is chosen
+appropriately. On 64-bit processors with good support for multiplying 64-bit
+quantities into a 128-bit result, defining w = 64 results in very high speeds.
+    On a 64-bit architecture, NH performance when w = 64 is about four times
+better than when w = 32. If one’s goal is a (2−64 )-AU guarantee over messages
+of length 128j bits, then NH[n, w] achieves this goal using j multiplications when
+w = 64, but requires 4j multiplications when w = 32. To see this, consider how
+one would achieve a (2−64 )-AU guarantee when w = 32. Each NH hashing of the
+message would require 2j multiplications and produce a hash value with a (2−32 )-
+AU guarantee. This would have to be done twice, under separate keys, to achieve
+the (2−64 )-AU goal, whereas only j 64-bit multiplications are needed to achieve
+the same guarantee on a 64-bit architecture. This is borne out experimentally.
+Two passes with w = 32 takes about 2 cpb while a single pass with w = 64
+requires only around 0.5 cpb on the Athlon 64.
+    One of the design goals for VHASH is achieving a balance between perfor-
+mance and internal key requirement. As can be seen in Figure 4, increasing
+the NH key length in VHASH increases VHASH performance for long messages
+greatly at first, but performance increases drop-off at around 128–256 bytes. We
+recommend 128 bytes for the NH hash key for applications which are not ex-
+tremely memory constrained. This choice harnesses most of the potential speed
+gains of NH with fairly low key requirement.
+
+2.2   Stage 2 – Fix Length
+The first stage produces an output proportional in length to the original input,
+which means that to achieve a fixed length, further hashing is necessary. Recent
+research into various polynomial-based hash functions have yielded hash func-
+tions appropriate for the task with good speed and universality guarantees [1, 3,
+11, 12]. Section 3 will address domain reconciliation necessary between stage-one
+outputs and stage-two inputs.
+     A simple and efficient method to hash a string M is to fix prime number p
+and break M into fixed-length blocks M1 , M2 , M3 , . . . , Mℓ in such a way that
+when the blocks are interpreted as unsigned integers m1 , m2 , m3 , . . . , mℓ , each
+is less than p (for example, by making each block ⌊log2 p⌋ bits). Then, choosing
+an integer key 0 ≤ k < p defines the hash output as
+
+                 hk (M ) = m1 k ℓ + m2 k ℓ−1 + · · · + mℓ k 1 mod p .
+
+Two different messages M, M ′ of the same block length ℓ differ by constant d
+when hashed by this function if
+
+hk (M )−hk (M ′ ) = (m1 −m′1 )k ℓ +(m2 −m′2 )k ℓ−1 +· · ·+(mℓ −m′ℓ )k 1 mod p = d .
+Because M 6= M ′ , at least one of the coefficients in this polynomial is non-zero.
+This being a polynomial of degree at most ℓ, there are at most ℓ values for k
+which cause hk (M ) − hk (M ′ ) − d (mod p) to evaluate to zero. If we define a hash
+family H = {hk | 0 ≤ k < p}, then H is an ε-A∆U hash family for ε = ℓ/p.
+
+Characteristics. With care, polynomial hashing can be made to perform well.
+Horner’s Rule suggests rephrasing hk (M ) as ((· · · ((m1 k + m2 )k + m3 )k · · ·)k +
+mℓ )k mod p , which allows hk (M ) to be computed as a sequence of ℓ multiplica-
+tions and additions modulo p [10]. Those multiplications and additions modulo
+p can be made efficient by choosing a convenient p and restricting the choice of
+k to a convenient set.
+     By choosing p to be of the form p = 2a −b for some small b, reductions modulo
+p can be done efficiently in a lazy manner. Each time a value c becomes at least
+2a , it can be rewritten as the (modulo p) equivalent c − 2a + b. For example
+p = 261 − 1 is prime. This means that, in a 64-bit register, a value c greater than
+p but less than 264 can be reduced by computing c = (c div 261 ) + (c mod 261 ).
+This equality simply recognizes that c = x261 +y for some x and 0 ≤ y < 261 , and
+replaces 261 with the equivalent (modulo p) value 1. The div and mod operations
+extract x and y, and can be computed efficiently using bitwise operations. This
+process is “lazy” for two reasons. First, numbers can be allowed to get as large
+as desired before performing a reduction as long as values do not exceed the
+register’s capacity. Second, a reduction to the range 0, . . . , p − 1 is not necessary
+until a final result is needed. So, when this method is followed to perform an
+intermediate reduction, the result need not be in the range 0, . . . , p−1. This puts
+off expensive range checks until the very end of the polynomial hash. Particularly
+useful primes on a 64-bit architecture are 2127 − 1 and 261 − 1.
+     Another source of inefficiencies is register carries during addition. Whenever
+a number is too large to be represented in a single CPU register, the number
+is generally split into multiple registers, and arithmetic on the larger number is
+accomplished by some sequence of smaller operations. For example, if we rewrite
+128-bit values j and k as j = w264 + x and k = y264 + z where 0 ≤ x, z < 264 ,
+then jk = wy2128 + (wz + xy)264 + xz. This means that to compute jk, we can
+put the top 64-bits of j and k into 64-bit registers w and y, and their low 64-
+bits into x and z. The result jk is then assembled by appropriately multiplying,
+shifting and adding wy, wz, xy and xz.
+     Consider the case where a polynomial is being evaluated modulo prime p =
+2127 − 1 using Horner’s Rule with lazy modulo reduction whenever an intermedi-
+ate value exceeds 128-bits. Each step in the Horner’s Rule evaluation is a multi-
+plication and addition of the form jk + m mod p, with k, m < p and j < 2128 . As
+just seen, say that j and k are 128-values spread into registers w, x, y and z so
+that jk = wy2128 +(wz+xy)264 +xz (mod p). Because 2128 = 2 (mod p), this can
+be rewritten jk = ((wz + xy) mod 264 )264 + (2(((wz + xy) div 264 ) + wy) + xz)
+(mod p). If j and k are unrestricted, then every addition could result in a carry
+beyond 128-bits. These carries must be accumulated and dealt with, which could
+be inefficient. Ideally this computation of jk would involve no carries beyond
+128-bits, allowing a more efficient computation.
+     Eliminating carries can be done by restricting k. The polynomial hash de-
+scribed in this section is (ℓ/p)-A∆U when hashing ℓ-block messages and choosing
+k from 0, . . . , p − 1. This is due to the fact that there are at most ℓ values in
+the range 0, . . . , p − 1 that cause hk (M ) − hk (M ′ ) − d (mod p) to evaluate to
+zero. If k is chosen from some subset A ⊆ {0, . . . , p − 1} instead, there would
+still be at most ℓ values that cause hk (M ) − hk (M ′ ) − d (mod p) to evaluate
+to zero, but because |A| ≤ p, the probability of randomly choosing one of them
+increases to at most ℓ/|A|. This means A can be chosen judiciously to exclude
+keys which cause excessive carries. In the case of evaluating polynomials modulo
+p = 2127 −1, restricting k to elements of A = {y264 +z | 0 ≤ y < 262 , 0 ≤ z < 263 }
+eliminates all but one possible carry beyond 128-bits when computing jk on a
+64-bit architecture for any 0 ≤ j < 2128 .
+     Experimentally, we have found that long sequences of cache-resident message
+blocks, each already less than 2127 − 1, can be hashed at a rate of 1.7 cpb on
+the Athlon 64 when k is chosen as described to avoid excessive carries. When
+hashing sequences of values less than 261 − 1 over modulus 261 − 1, allowing k to
+be any value less than 261 − 1, messages can be hashed at 1.3 cpb on the Athlon
+64. It should be noted that hashing an arbitrary string would not be nearly as
+fast due to the need of breaking the string into appropriate blocks (within the
+modulus).
+
+
+2.3   Stage 3 – Distillation
+
+When NH is defined for w = 64 and the Polynomial hash is defined over prime
+modulus p = 2127 − 1, as is the case in VHASH, the resulting universality
+guarantee of the first two stages composed can be no better than (2−64 )-A∆U
+(more on this in Section 3) and yet the output requires 127 bits. To reduce
+the disparity between the number of bits needed for the hash output and the
+universality guarantee, one final hash is used to hash the fixed length stage-two
+output into fewer bits.
+    Another well known provably universal hashing function is the inner product
+over a prime modulus [8]. Again, let p be a prime and let M be broken into
+fixed-length blocks M1 , M2 , M3 , . . . , Mℓ in such a way that when the blocks are
+interpreted as unsigned integers m1 , m2 , m3 , . . . , mℓ , each is less than p. Then,
+choosing a vector k = (k1 , k2 , . . . , kℓ ) with 0 ≤ ki < p for all 1 ≤ i ≤ ℓ defines
+the hash output as
+
+                    hk (M ) = m1 k1 + m2 k3 + · · · mℓ kℓ mod p .
+
+For any two different messages M, M ′ of the same block length ℓ and integer
+0 ≤ d < p, when k is chosen at random, the probability that
+
+hk (M ) − hk (M ′ ) = (m1 − m′1 )k1 + (m2 − m′2 )k2 + · · · + (mℓ − m′ℓ )kℓ mod p = d
+
+is exactly 1/p. It follows that inner product hashing over a prime modulus forms
+an ε-A∆U hash family for ε = 1/p.
+    VHASH[b](M, K, k, k1 , k2 )
+    Inputs:
+         M , a string of any length
+         K, a string of length b bits, where b = 128i for some integer i > 1
+         k, an element of {w296 + x264 + y232 + z | w, x, y, z ∈ Z230 }
+         k1 , k2 , integers in the range 0 . . . 261 − 2, inclusive
+    Output:
+         h, an integer in the range 0 . . . 261 − 2, inclusive
+    Algorithm:
+    1.   n = max(⌈|M |/b⌉, 1)
+    2.   Let M1 , M2 , . . . , Mn be strings so that M1 ||M2 || · · · ||Mn = M and
+              |Mi | = b for 1 ≤ i < n.
+    3.   ℓi = |Mi | for each 1 ≤ i ≤ n
+    4.   Let Mn = Mn ||0j where j ≥ 0 is the smallest integer so
+              that |Mn | + j mod 128 = 0
+    5.   Byte-reverse each 64-bit word in Mi for each 1 ≤ i ≤ n
+    6.   ai = (NH[b/64, 64](K, Mi ) mod 2126 ) + (ℓi mod b)264 for each 1 ≤ i ≤ n
+    7.   p = kn+1 + a1 kn + a2 kn−1 + · · · + an k1 mod (2127 − 1)
+    8.   p1 = (p div 264 ) mod 260
+    9.   p2 = p mod 260
+    10. h = p1 k1 + p2 k2 mod (261 − 1)
+
+
+Fig. 2. The hash family VHASH is ε-A∆U , when K, k, k1 , k2 are chosen randomly
+from their domains, where ε = 2−59.9 + (ℓ/b)2−107 .
+
+
+
+
+Characteristics. Inner-product hashing requires at least as much key as mes-
+sage being hashed. This makes it unsuitable for long messages. But, for short
+messages, implementations can be efficient using strategies already discussed for
+polynomial hashing. In particular, lazy modular reduction and choosing a prime
+modulus of the form p = 2a − b where b is small, results in good performance.
+For example, when p = 261 − 1, j < 264 and k < p, the product jk (mod p)
+can be efficiently computed as (jk div 264 )23 + (jk mod 264 ) because 264 = 23
+(mod p). This is exactly the computation done by VHASH in its third stage.
+
+
+3    VHASH Definition
+
+With these component hash functions as building blocks and the three-stage
+hash function as a model, a hash function suitable for authenticating arbitrary
+messages and optimized for 64-bit architectures can be presented. For any b
+which is a positive multiple of 128, Figure 2 specifies the hash family VHASH[b]
+where choosing a random function h from the family is achieved by choosing
+K, k, k1 and k2 uniformly at random from their domains and letting h(·) =
+VHASH(·, K, k, k1 , k2 ).
+Theorem 1. Let b be any positive multiple of 128 and let ℓ be any positive
+integer, then VHASH[b] is ε-A∆U over all binary strings up to length ℓ bits
+where ε = 2−59.9 + (ℓ/b)2−107 .
+
+The theorem will be proven over a sequence of lemmas later in this section. With
+this result, VHASH can easily be embedded in a Wegman-Carter MAC which
+we call VMAC. Here we summarize its construction. (It will be fully specified
+in a separate document.) Let p = 261 − 1 and N be some nonce space. Then
+for functions f : N → Zp and h ∈ VHASH[b], tag generation under VMAC
+is defined as VMACTagGenf,h (m, n) = h(m) + f (n) mod p for message m and
+nonce n. We define the security of a nonce-based MAC scheme, such as VMAC,
+that uses tag-generation function TagGen(m, n) as follows. Assume an adversary
+knows any sequence of triples (m1 , n1 , t1 ) . . . (mq , nq , tq ) where each ni is unique
+and ti = TagGen(mi , ni ) for each 1 ≤ i ≤ q. The MAC scheme is α-secure
+if the adversary cannot produce (m, n, t) with probability exceeding α where
+(m, n) 6= (mi , ni ) for any i and t = TagGen(m, n). The following theorem follows
+from the theory of Wegman-Carter MACs.
+
+Proposition 2. Let ℓ be a positive integer, p = 261 − 1 and N be some non-
+empty set. Let b be a positive multiple of 128. Let VMACTagGenf,h (m, n) =
+h(m) + f (n) mod p for randomly chosen functions f : N → Zp and h ∈
+VHASH[b]. Then, VMACTagGenf,h is a (2−59.9 + (ℓ/b)2−107 )-secure over mes-
+sages upto ℓ bits in length.
+
+
+
+3.1   VHASH Analysis
+
+The hash functions seen so far have interfaces that are incompatible with one an-
+other without some adaptation. For example, NH produces outputs with values
+up to 2128 − 1, whereas the polynomial hash only accepts sequences of values less
+than 2127 − 1. Similarly, the polynomial hash produces a value less than 2127 − 1,
+but the inner-product expects a sequence of values less than 261 − 1. To address
+these problems, a lemma is introduced which allows out-of-range values to be
+brought into range with a manageable increase to the probabilities involved.
+Length issues must also be resolved. As presented, each hash function seen so
+far has a universality guarantee when hashing messages of equal length. These
+must be extended to provide universality guarantees over all lengths. Each stage
+of VHASH will now be analyzed for universality guarantee and interface.
+
+
+3.2   First: A Lemma
+
+The primary tool used to fix the problem that one hash function produces values
+that are outside of the domain of a second hash function is the following lemma
+which says that if we routinely zero any fixed bit-position of the outputs of an ε-
+A∆U hash function, the resulting hash function is still A∆U but with a reduced
+universality guarantee.
+     VHASH-128[b](M, K1 , K2 , k)
+     Inputs:
+        M , a string of any length
+        K1 , K2 , strings of length b bits, where b = 128i for some integer i > 1
+        k, an element of {w296 + x264 + y232 + z | w, x, y, z ∈ Z230 }
+     Output:
+        h, an integer in the range 0 . . . 2127 − 2, inclusive
+     Algorithm:
+     1. n = max(⌈|M |/b⌉, 1)
+     2. Let M1 , M2 , . . . , Mn be strings so that M1 ||M2 || · · · ||Mn = M and
+           |Mi | = b for 1 ≤ i < n.
+     3. ℓi = |Mi | for each 1 ≤ i ≤ n
+     4. Let Mn = Mn ||0j where j ≥ 0 is the smallest integer so
+           that |Mn | + j mod 128 = 0
+     5. Byte-reverse each 64-bit word in Mi for each 1 ≤ i ≤ n
+     6. ai = (NH[b/64, 64](K1 , Mi ) mod 2126 ) + (ℓi mod b)264 for each 1 ≤ i ≤ n
+     7. bi = NH[b/64, 64](K2 , Mi ) mod 2126 for each 1 ≤ i ≤ n
+     8. h = k2n+1 + a1 k2n + b1 k2n−1 + a2 k2n−2 + b2 k2n−3 + · · ·
+           +an k2 + bn k1 mod (2127 − 1)
+
+
+Fig. 3. The hash family VHASH-128 is ε-A∆U , when K1 , K2 , k1 , k2 are chosen ran-
+domly from their domains, where ε = (ℓ/b)2−118 .
+
+
+
+
+Definitions. When x is a non-negative integer, let xi be 1 if the binary repre-
+sentation of x has a 1 in the position of weight 2i and 0 otherwise. Let Zeroi (x)
+be the function that returns x if xi = 0 and returns x − 2i if xi = 1 (ie, it returns
+x with the 2i position zeroed). Zn is the set {0, 1, 2, . . . , n − 1}. When s is a
+string, |s| is its bitlength.
+
+Lemma 3. Let H = {h : A → Zn } be an ε-A∆U hash family (where the
+operation is addition modulo n) and Hi = {Zeroi ◦ h | h ∈ H}, then Hi is (3ε)-
+A∆U for every i.
+
+Proof. Let a 6= b be elements of A, and d and d′ be elements of Zn . Because H
+is ε-A∆U , we know that Pr[h(a) − h(b) = d] ≤ ε when h is chosen randomly
+from H, but what is the probability Pr[h′ (a) − h′ (b) = d′ ] when h′ is chosen
+randomly from Hi ? Let h be chosen randomly, and let h′ = Zeroi ◦ h for some
+0 ≤ i < lg n. Define x = h(a) and y = h(b). There are four possible combinations
+for the values of xi and yi : (xi , yi ) could equal (0, 0), (0, 1), (1, 0) or (1, 1). We
+look at each case.
+     When xi = yi , then h′ (a) − h′ (b) = d′ if and only if h(a) − h(b) = d′ .
+Using conditional probability we can bound the likelihood of this scenario as
+Pr[h(a) − h(b) = d′ and xi = yi ] = Pr[h(a) − h(b) = d′ ] · Pr[xi = yi | h(a) − h(b) =
+d′ ] ≤ ε · 1. Similarly, if (xi , yi ) is (0, 1) or (1, 0) then h′ (a) − h′ (b) = d′ if and only
+if h(a) − h(b) is d′ + 2i or d′ − 2i , respectively, each of which is similarly bounded
+by ε · 1. These three cases being the only ones in which h′ (a) − h′ (b) = d′ , H ′
+must be 3ε-A∆U .                                                                      ⊓
+                                                                                      ⊔
+Note that a similar result is not possible for ε-AU hash families. Zeroing a bit of
+an ε-AU hash family can eliminate all guarantees. The identity function fI (x) =
+x is 0-AU, but if you zero the last bit of the output (ie, define h = Zero0 ◦ fI ),
+then h(s||0) and h(s||1) always collide for every s.
+
+3.3   Stage 1 – NH
+The goal of the first hashing phase (Lines 1–6 of Figure 2) is to hash arbitrary
+messages into much shorter representations (albeit proportional in length to their
+originals) in such a way that two distinct arbitrary-length messages have a low
+probability of hashing to the same result (so that inputs to the next hash phase
+are unlikely to be the same). Letting b be any positive multiple of 128, Lines 1–6
+of Figure 2 defines a hash family utilizing NH. The domain of the hash family
+is binary strings of any length. The codomain is vectors of integers from Z2126 .
+Randomly choosing a function from the hash family is achieved by choosing a
+random b-bit string K. Lines 1–6 work as follows. Given string M , break M
+into n = ⌈|M |/b⌉ blocks M1 , M2 , . . . , Mn so that each of the first n − 1 blocks is
+length b and Mn is whatever is left over (Lines 1–2). If M was the empty string,
+then n is set to 1. Each of the blocks M1 , . . . , Mn−1 is guaranteed to be in the
+domain of NH. Block Mn may not be a multiple of 128, and so not in the domain
+of NH which is only defined for inputs with length divisible by 2w. Appending
+the fewest number of zero bits needed to make it so will bring Mn into the
+domain of NH (Line 4). The blocks are then each hashed independently by NH,
+the two most significant bits of the results are zeroed (Line 6), and the result has
+the modulo-b pre-zero-padding length of its corresponding block added. Finally,.
+The n resulting values form a vector which is the hash function’s output.
+Lemma 4. Let b be any positive multiple of 128. Lines 1–6 of Figure 2 define
+a (9/264 )-AU hash family over binary strings of arbitrary length.
+Proof. Let b be a positive multiple of 128, K be a uniformly distributed b-
+bit string, and M 6= M ′ arbitrary binary strings. Let M = M1 , . . . , Mm and
+M ′ = M1′ , . . . , Mn′ be broken into blocks and let ℓi and ℓ′i represent the length
+of Mi and Mi′ as described in Lines 1–3 of Figure 2. Let Mm and Mn′ be zero
+extended to the nearest multiple of 128 bits, if needed, as described in Line
+4. The byte-reversal of Line 5 has no effect on whether Mi = Mi′ for any i.
+What is the probability that identical vectors are produced by evaluating Line
+6 on M1 , . . . , Mm and M1′ , . . . , Mn′ ? If n 6= m, the probability of collision is zero
+because the vectors produced will be different lengths. There are two other cases
+to examine.
+    If n = m and Mi 6= Mi′ for some 1 ≤ i ≤ n, then, because NH is 2−64 -A∆U
+over strings that are a multiple of 2w = 128 bits in length (which both Mi
+and Mi′ are guaranteed to be), the probability that (NH(K, Mm ) mod 2126 ) −
+(NH(K, Mn′ ) mod 2126 ) = 0 is no more than 9/264 . The factor of nine comes
+from the mod 2126 , which has the affect of zeroing the top two bits of the NH
+output. Lemma 3 says that this causes up to a factor of nine degradation.
+    There is one more situation to consider: when one string is a proper prefix
+of the other before zero-padding, but the two strings are identical afterward.
+In this case, Mm = Mn′ because the strings are the same after padding but
+ℓm 6= ℓ′n because one string was a proper prefix of the other before padding.
+There is thus zero probability that (NH(K, Mm ) mod 2126 ) + (ℓm mod b)264 =
+(NH(K, Mn′ ) mod 2126 ) + (ℓ′n mod b)264 because the NH hashes are guaranteed
+to give the same result, but two different lengths are added.
+    In every case, the probability that the vectors output are identical when
+hashing M and M ′ under key K and parameter b is no more than 9/264 .        ⊓
+                                                                             ⊔
+
+
+3.4   Stage 2 – Polynomial
+
+The goal of the second hashing phase (Lines 7–9 in Figure 2) is to take the
+unbounded-length output of the first NH hash phase and hash it to a short
+fixed-length string in such a way that if two inputs to this stage differ then the
+probability that the outputs collide is low. Lines 7–9 define a universal hash
+family. The domain of the hash family is vectors of integers from Z2127 −1 . The
+codomain is ordered pairs from Z260 × Z260 . Choosing a random function from
+the hash family is done by choosing a random element k ∈ {w296 + x264 + y232 +
+z | w, x, y, z ∈ Z230 }. Line 7 is a simple polynomial evaluation hash modulo
+2127 − 1. Lines 8–9 utilize Lemma 3 by zeroing seven bits and then breaking in
+two the result to produce an output in the domain of the third hash phase. Since
+the first NH phase outputs sequences of values less than 2126 , those outputs are
+suitable without modification for hashing by the polynomial hash.
+
+Lemma 5. Let n ≥ 0 be an integer. Lines 7–9 of Figure 2 define a (n/2107 )-AU
+hash family over vectors of length up to n of values less than 2127 − 1.
+
+Proof. It is known that the polynomial hash of Section 2 is universal over vectors
+of the same length. So, to allow vectors of varying length, let n be an integer
+no less than the length of the longest vector to be hashed. Then, to hash vec-
+tor m1 , m2 , . . . , mj with the polynomial hash of Section 2, first prepend n − j
+zeros and a one to the vector, resulting in a vector 0, 0, . . . , 0, 1, m1 , . . . , mj of
+length n + 1 elements. This preprocessing assures that all vectors hashed by the
+polynomial are the same length, and it assures that any pair of vectors that are
+different before preprocessing are also different after preprocessing. This prepro-
+cessing step extends the basic polynomial hash of Section 2 to vectors up to
+length n, but maintains a ((n + 1)/2120 )-A∆U guarantee when key k is chosen
+from {w296 + x264 + y232 + z | w, x, y, z ∈ Z230 }. Notice that Line 7 of Figure
+2 produces the same result as would the preprocessed polynomial hash just de-
+scribed. This is because the prepended zeros have no computational effect but
+are used only as a conceptual device to make all vectors equal length. Thus the
+hash on Line 7 is also ((n + 1)/2120 )-A∆U. Lemma 3 tells us that zeroing seven
+bits as in Lines 8–9, degrades the universality guarantee by up to a factor of 37 .
+To simplify the guarantee, (37 (n + 1))/2120 < n/2107 .                         ⊓
+                                                                                ⊔
+
+3.5   Stage 3 – Inner-Product
+Line 10 of Figure 2 is a straightforward application of the inner-product hash
+from Section 2. It is a hash family with domain Z261 −1 × Z261 −1 and codomain
+Z261 −1 . Choosing a random function from the hash family is done by choosing a
+random (k1 , k2 ) ∈ Z261 −1 × Z261 −1 . The output from the second hashing phase
+is a pair of values less than 260 , so no adjustment is needed. The following
+proposition needs no further proof.
+Proposition 6. Line 10 of Figure 2 defines a (1/(261 − 1))-A∆U hash family
+over Z261 −1 × Z261 −1 .
+Putting it Together. Lines 1–10 of Figure 2 define VHASH as the composi-
+tion of three universal hash functions. The properties of composed hash functions
+are well known [4, 13]. If H1 is an ε1 -AU family of hash functions with codomain
+A, and H2 is an ε2 -AU family of hash functions with domain B where A ⊆ B,
+then H = {h2 ◦ h1 | h1 ∈ H1 , h2 ∈ H2 } is (ε1 + ε2 )-AU. If H2 is ε2 -A∆U, then
+H is (ε1 + ε2 )-A∆U. This leads immediately to the result of Theorem 1.
+    If an application needs collision probabilities less than those of VHASH, then
+VHASH could be applied to given messages twice, using a different key each
+time. Alternatively, Figure 3 gives a hash function VHASH-128 based on the
+same principles as VHASH, but producing 128-bit outputs without the need for
+significantly more internal key than VHASH. Although no proof of correctness
+is given here, the arguments mirror those of VHASH. VHASH-128 is (ℓ/b)2−118 -
+A∆U.
+
+3.6   VHASH Performance
+The performance of VHASH is influenced by many factors, the most important
+being how efficiently the host architecture multiplies 64-bit and adds 128-bit
+quantities. The Athlon 64 and recently released Intel Core 2 architectures — both
+64-bit and designed for high “performance-per-watt” — are very efficient in these
+operations and so perform at the level described in this paper. Architectures
+which do not support fast 64-bit multiplication and multi-precision addition do
+not execute VHASH as quickly. Consider multiplication of 64-bit operands into
+a 128-bit result. On the Athlon 64 this can be done using a single instruction
+with a latency of five cycles, and VHASH hashes at a peak of 0.5 cpb. Intel’s
+64-bit NetBurst architecture (eg, “Nacona”) can also perform the multiplication
+in a single instruction, but has a latency of 12 cycles, resulting in a VHASH
+peak of 1.4 cpb. The PowerPC 970 requires two instructions to complete a 64-
+bit multiplication, with a total latency of 13 cycles, and VHASH peaks at 1.0
+cpb. The PowerPC version is faster than the NetBurst version due to NetBurst’s
+horrible multiprecision addition latencies which also impact performance, but to
+a lesser extent than multiplication.
+                              0.25
+                                          1024 Bytes
+                                           512 Bytes
+                                           256 Bytes
+                                           128 Bytes
+                                            64 Bytes
+                               0.5          32 Bytes
+        Speed (cycles/byte)                 16 Bytes
+
+
+
+
+                                1
+
+
+
+
+                                2
+
+
+
+
+                                4
+                                     32         64     128       256        512   1024   2048
+                                                        Message Length (bytes)
+
+
+Fig. 4. Performance measured in Athlon 64 cycles per byte of message hashed for
+various NH key lengths and message lengths. Gains diminish greatly beyond 128 bytes.
+
+
+
+
+     VHASH slows down significantly on 32-bit architectures. Computing a 64-bit
+multiplication on a 32-bit architecture using the primary-school multiprecision
+multiplication algorithm requires four 32-bit multiplications and several multi-
+precision additions to produce a 128-bit result. On the Motorola PowerPC 7450,
+which has a six cycle latency per 32-bit multiplication, VHASH peaks at 5.0
+cpb. On a 32-bit Intel NetBurst architecture, 32-bit multiplication latency is 11
+cycles, but use of SSE vector instructions allows for a peak speed of 6.4 cpb.
+Clearly, VHASH benefits from architectures which multiply 64-bit registers fast,
+enabling exceptional VHASH performance.
+     Other hash functions are somewhat less variable across the mentioned archi-
+tectures. UHASH and SHA1 were designed for 32-bit architectures, and so mov-
+ing from 64-bit to 32-bit architectures has no inherent disadvantage. Poly1305 is
+multiplication based, but uses a processor’s floating point unit and so is less af-
+fected by changes to general purpose register width. For all three hash functions,
+it is the efficiency of the processor implementation which will have the greatest
+impact. For example, Poly1305 has peak performance on a 64-bit PowerPC 970
+of 6.6 cpb and 7.3 cpb on a slightly less efficient 32-bit PowerPC 7410. On the
+64-bit Athlon 64 Poly1305 peaks at 3.1 cpb while it peaks on the much less
+efficient 32-bit Intel NetBurst at 5.2 cpb.
+     Other factors having significant affect on VHASH performance are the size
+of the message being hashed and the length b of the key used in the first (NH)
+stage of hashing. Figure 4 shows how these parameters affect performance on the
+Athlon 64 as measured in cycles per byte. Hashing overhead is amortized over
+all bytes being hashed, so as message lengths increase, overhead contributes less.
+Also, increasing the length of the Stage 1 NH key reduces the amount of data
+hashed by Stages 2 and 3. Since Stage 1 is much faster than the later stages,
+increasing the NH key length improves performance on longer messages.
+
+Acknowledgements
+The author wishes to thank the anonymous reviewers of SAC 2006 and FSE 2006
+for their helpful reviews, especially in urging a closer look at performance on 32-
+bit architectures. Also, Phil Rogaway’s comments and Joe Olivas’s assitance in
+gathering timing data were timely and quite helpful. Thanks!
+
+
+References
+ 1. Afanassiev V, Gehrmann C, Smeets B. Fast message authentication using efficient
+    polynomial evaluation. In Fast Software Encryption – FSE 1997. Springer-Verlag,
+    1997; 190–204.
+ 2. Bernstein D. Stronger security bounds for Wegman-Carter-Shoup authenticators.
+    In Advances in Cryptology – EUROCRYPT 2005. Springer-Verlag, 2005; 164–180.
+ 3. Bernstein D. The Poly1305-AES message-authentication code. In Fast Software
+    Encryption – FSE 2005. Springer-Verlag, 2005; 32–49.
+ 4. Bierbrauer J, Johansson T, Kabatianskii G, Smeets B. On families of hash functions
+    via geometric codes and concatenation. In Advances in Cryptology – CRYPTO
+    1993. Springer-Verlag, 1993; 331–342.
+ 5. Black J, Halevi S, Krawczyk H, Krovetz T, Rogaway P. UMAC: Fast and secure
+    message authentication. In Advances in Cryptology – CRYPTO 1999. Springer-
+    Verlag, 1999; 216–233.
+ 6. Boesgaard M, Christensen T, Zenner E. Badger – A fast and provably secure MAC.
+    In Applied Cryptography and Network Security – ACNS 2005. Springer-Verlag,
+    2005; 176–191.
+ 7. Carter L, Wegman M. Universal classes of hash functions. J. of Computer and
+    System Sciences 1981; 22:265–279.
+ 8. Cormen T, Leiserson C, Rivest R, Stein C. Introduction to algorithms. MIT Press,
+    2001. Section 11.3.3.
+ 9. Halevi S, Krawczyk H. MMH: Software message authentication in the Gbit/second
+    rates. In Fast Software Encryption – FSE 1997. Springer-Verlag, 1997; 172–189.
+10. Knuth D. The Art of Computer Programming, Vol. 2: Seminumerical Algorithms,
+    3rd ed. Addison-Wesley, 1998; 486–489.
+11. Krovetz T, Rogaway P. Fast universal hashing with small keys and no prepro-
+    cessing: The PolyR construction. In Information Security and Cryptology – ICICS
+    2000. Springer-Verlag, 2000; 73–89.
+12. Shoup V. On fast and provably secure message authentication based on universal
+    hashing. In Advances in Cryptology – CRYPTO 1996. Springer-Verlag, 1996; 313-
+    328.
+13. Stinson D. Universal hashing and authentication codes. Designs, Codes and Cryp-
+    tography 1994; 4:369–380.
+14. Wegman M, Carter L. New hash functions and their use in authentication and set
+    equality. J. of Computer and System Sciences 1979; 18:143–154.
+

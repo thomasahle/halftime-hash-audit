@@ -1,0 +1,119 @@
+@ProvenHashes.polynomial_collision_bound : ∀ {F : Type u_1} [inst : Field F] [inst_1 : Fintype F] {n L : ℕ},
+  n ≤ L →
+    ∀ (m m' : Fin n → F),
+      m ≠ m' →
+        (ProvenHashes.uniformProb fun x => ProvenHashes.polynomialHash m x = ProvenHashes.polynomialHash m' x) ≤
+          ↑(L - 1) / ↑(Fintype.card F)
+'ProvenHashes.polynomial_collision_bound' depends on axioms: [propext, Classical.choice, Quot.sound]
+ProvenHashes.polynomial_collision_zmod : ∀ (p : ℕ) [inst : Fact (Nat.Prime p)] {n L : ℕ},
+  n ≤ L →
+    ∀ (m m' : Fin n → ZMod p),
+      m ≠ m' →
+        (ProvenHashes.uniformProb fun x => ProvenHashes.polynomialHash m x = ProvenHashes.polynomialHash m' x) ≤
+          ↑(L - 1) / ↑p
+'ProvenHashes.polynomial_collision_zmod' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.polynomial_collision_gf64 : ∀ {n L : ℕ},
+  n ≤ L →
+    ∀ (m m' : Fin n → GaloisField 2 64),
+      m ≠ m' →
+        (ProvenHashes.uniformProb fun x => ProvenHashes.polynomialHash m x = ProvenHashes.polynomialHash m' x) ≤
+          ↑(L - 1) / 2 ^ 64
+'ProvenHashes.polynomial_collision_gf64' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.nh_difference_uniform : ∀ {F : Type u_1} [inst : Field F] [inst_1 : Fintype F] {n : ℕ}
+  (m m' : Fin n × Bool → F),
+  m ≠ m' →
+    ∀ (t : F),
+      (ProvenHashes.uniformProb fun k => ProvenHashes.nhHash m k - ProvenHashes.nhHash m' k = t) = 1 / ↑(Fintype.card F)
+'ProvenHashes.nh_difference_uniform' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.nh_collision_bound : ∀ {F : Type u_1} [inst : Field F] [inst_1 : Fintype F] {n : ℕ}
+  (m m' : Fin n × Bool → F),
+  m ≠ m' →
+    (ProvenHashes.uniformProb fun k => ProvenHashes.nhHash m k = ProvenHashes.nhHash m' k) ≤ 1 / ↑(Fintype.card F)
+'ProvenHashes.nh_collision_bound' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.tabulation_difference_uniform : ∀ {I : Type u_1} {A : Type u_2} {G : Type u_3} [inst : Fintype I]
+  [inst_1 : Fintype A] [inst_2 : DecidableEq I] [inst_3 : DecidableEq A] [inst_4 : AddCommGroup G] [inst_5 : Fintype G]
+  (x x' : I → A),
+  x ≠ x' →
+    ∀ (t : G),
+      (ProvenHashes.uniformProb fun T => ProvenHashes.tabulationHash x T - ProvenHashes.tabulationHash x' T = t) =
+        1 / ↑(Fintype.card G)
+'ProvenHashes.tabulation_difference_uniform' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.tabulation_collision_exact : ∀ {I : Type u_1} {A : Type u_2} [inst : Fintype I] [inst_1 : Fintype A]
+  [inst_2 : DecidableEq I] [inst_3 : DecidableEq A] (w : ℕ) (x x' : I → A),
+  x ≠ x' →
+    (ProvenHashes.uniformProb fun T => ProvenHashes.tabulationHash x T = ProvenHashes.tabulationHash x' T) = 1 / 2 ^ w
+'ProvenHashes.tabulation_collision_exact' depends on axioms: [propext, Classical.choice, Quot.sound]
+ProvenHashes.multiplyShift_collision_close : ∀ (w ℓ : ℕ) (a : ProvenHashes.OddMultiplier w) (x y : Fin (2 ^ w)),
+  ProvenHashes.multiplyShift w ℓ a x = ProvenHashes.multiplyShift w ℓ a y →
+    ↑↑a * ↑x % 2 ^ (2 * w) < ↑↑a * ↑y % 2 ^ (2 * w) + 2 ^ (2 * w - ℓ) ∧
+      ↑↑a * ↑y % 2 ^ (2 * w) < ↑↑a * ↑x % 2 ^ (2 * w) + 2 ^ (2 * w - ℓ)
+'ProvenHashes.multiplyShift_collision_close' depends on axioms: [propext, Classical.choice, Quot.sound]
+ProvenHashes.odd_mul_mod_injective : ∀ (N a : ℕ), Odd a → Function.Injective fun x => a * ↑x % 2 ^ N
+'ProvenHashes.odd_mul_mod_injective' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Recurrence.decode_encode : ∀ {F : Type u_1} [inst : Field F] (m : List (F × F)),
+  ProvenHashes.Recurrence.decode m.length (ProvenHashes.Recurrence.encode m) = m
+'ProvenHashes.Recurrence.decode_encode' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Recurrence.encode_injective : ∀ {F : Type u_1} [inst : Field F],
+  Function.Injective ProvenHashes.Recurrence.encode
+'ProvenHashes.Recurrence.encode_injective' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Recurrence.decode_keyPolynomial : ∀ {F : Type u_1} [inst : Field F] (m : List (F × F)),
+  ProvenHashes.Recurrence.decodePolynomial (ProvenHashes.Recurrence.keyPolynomial m) = m
+'ProvenHashes.Recurrence.decode_keyPolynomial' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Recurrence.keyCoefficients_injective : ∀ {F : Type u_1} [inst : Field F],
+  Function.Injective fun m d => MvPolynomial.coeff d (ProvenHashes.Recurrence.keyPolynomial m)
+'ProvenHashes.Recurrence.keyCoefficients_injective' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Recurrence.eval_keyPolynomial : ∀ {F : Type u_1} [inst : Field F] (m : List (F × F)) (k : Fin 3 → F),
+  (MvPolynomial.eval k) (ProvenHashes.Recurrence.keyPolynomial m) = ProvenHashes.Recurrence.hash m k
+'ProvenHashes.Recurrence.eval_keyPolynomial' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Recurrence.keyPolynomial_difference_degree : ∀ {F : Type u_1} [inst : Field F] (m m' : List (F × F)),
+  m.length = m'.length →
+    0 < m.length →
+      (ProvenHashes.Recurrence.keyPolynomial m - ProvenHashes.Recurrence.keyPolynomial m').totalDegree ≤ m.length
+'ProvenHashes.Recurrence.keyPolynomial_difference_degree' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Recurrence.collision_bound : ∀ {F : Type u_1} [inst : Field F] [inst_1 : Fintype F] (m m' : List (F × F)),
+  m.length = m'.length →
+    m ≠ m' →
+      (ProvenHashes.uniformProb fun k => ProvenHashes.Recurrence.hash m k = ProvenHashes.Recurrence.hash m' k) ≤
+        ↑m.length / ↑(Fintype.card F)
+'ProvenHashes.Recurrence.collision_bound' depends on axioms: [propext, Classical.choice, Quot.sound]
+ProvenHashes.Recurrence.collision_bound_gf64 : ∀ (m m' : List (GaloisField 2 64 × GaloisField 2 64)),
+  m.length = m'.length →
+    m ≠ m' →
+      (ProvenHashes.uniformProb fun k => ProvenHashes.Recurrence.hash m k = ProvenHashes.Recurrence.hash m' k) ≤
+        ↑m.length / 2 ^ 64
+'ProvenHashes.Recurrence.collision_bound_gf64' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Recurrence.collision_bound_any_length : ∀ {F : Type u_1} [inst : Field F] [inst_1 : Fintype F]
+  (m m' : List (F × F)),
+  m ≠ m' →
+    (ProvenHashes.uniformProb fun k => ProvenHashes.Recurrence.hash m k = ProvenHashes.Recurrence.hash m' k) ≤
+      ↑(max m.length m'.length + 1) / ↑(Fintype.card F)
+'ProvenHashes.Recurrence.collision_bound_any_length' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.compose_collision_bound : ∀ {K : Type u_1} {J : Type u_2} {M : Type u_3} {R : Type u_4} [inst : Fintype K]
+  [inst_1 : Fintype J] [Nonempty K] [Nonempty J] (s s' : K → M) (g : J → M → R) (a b : ℚ≥0),
+  (ProvenHashes.uniformProb fun k => s k = s' k) ≤ a →
+    (∀ (k : K), s k ≠ s' k → (ProvenHashes.uniformProb fun j => g j (s k) = g j (s' k)) ≤ b) →
+      (ProvenHashes.uniformProb fun k => g k.2 (s k.1) = g k.2 (s' k.1)) ≤ a + b
+'ProvenHashes.compose_collision_bound' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.chainhash_equal_length_from_stages : ∀ {F : Type u_1} {K : Type u_2} {J : Type u_3} [inst : Field F]
+  [inst_1 : Fintype F] [inst_2 : Fintype K] [inst_3 : Fintype J] [Nonempty K] [Nonempty J] (p : ℕ)
+  (s s' : K → List (F × F)) (g : J → F → F),
+  (∀ (k : K), (s k).length = (s' k).length) →
+    (∀ (k : K), (s k).length ≤ p) →
+      (ProvenHashes.uniformProb fun k => s k = s' k) ≤ 1 / ↑(Fintype.card F) →
+        (∀ (v v' : F), v ≠ v' → (ProvenHashes.uniformProb fun j => g j v = g j v') ≤ 1 / ↑(Fintype.card F)) →
+          (ProvenHashes.uniformProb fun k =>
+              g k.2 (ProvenHashes.Recurrence.hash (s k.1.1) k.1.2) =
+                g k.2 (ProvenHashes.Recurrence.hash (s' k.1.1) k.1.2)) ≤
+            ↑(p + 2) / ↑(Fintype.card F)
+'ProvenHashes.chainhash_equal_length_from_stages' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.chainhash_different_lengths_from_stages : ∀ {F : Type u_1} {K : Type u_2} {J : Type u_3} [inst : Field F]
+  [inst_1 : Fintype F] [inst_2 : Fintype K] [inst_3 : Fintype J] [Nonempty K] [Nonempty J] (p : ℕ)
+  (s s' : K → List (F × F)) (g : J → F → F),
+  (∀ (k : K), (s k).length ≠ (s' k).length) →
+    (∀ (k : K), max (s k).length (s' k).length ≤ p) →
+      (∀ (v v' : F), v ≠ v' → (ProvenHashes.uniformProb fun j => g j v = g j v') ≤ 1 / ↑(Fintype.card F)) →
+        (ProvenHashes.uniformProb fun k =>
+            g k.2 (ProvenHashes.Recurrence.hash (s k.1.1) k.1.2) =
+              g k.2 (ProvenHashes.Recurrence.hash (s' k.1.1) k.1.2)) ≤
+          ↑(p + 2) / ↑(Fintype.card F)
+'ProvenHashes.chainhash_different_lengths_from_stages' depends on axioms: [propext, Classical.choice, Quot.sound]

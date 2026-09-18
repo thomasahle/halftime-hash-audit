@@ -1,0 +1,5 @@
+review-support/wrapper-cert/../../halftime-current.hpp:151:59: runtime error: signed integer overflow: 8672656684643304651 + 4155333648081183570 cannot be represented in type 'int64_t' (aka 'long long')
+SUMMARY: UndefinedBehaviorSanitizer: undefined-behavior review-support/wrapper-cert/../../halftime-current.hpp:151:59 
+entropy_bytes=70928
+build=NEON with dispatch-name aliases (not unmodified NEON dispatch)
+Encode3 b=1 bytes=168 changed_word=6 fibre_checks=7680 favourable_full_collisions=1280

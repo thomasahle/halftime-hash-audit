@@ -1,0 +1,1611 @@
+@ProvenHashes.uniformProb_le_one : ∀ {K : Type u_1} [inst : Fintype K] (E : K → Prop), ProvenHashes.uniformProb E ≤ 1
+'ProvenHashes.uniformProb_le_one' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.uniformProb_of_injective : ∀ {K : Type u_1} {V : Type u_2} [inst : Fintype K] (f : K → V),
+  Function.Injective f → ∀ (v : V), (ProvenHashes.uniformProb fun k => f k = v) ≤ 1 / ↑(Fintype.card K)
+'ProvenHashes.uniformProb_of_injective' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.uniformProb_of_injective_update : ∀ {I : Type u_1} {V : Type u_2} {O : Type u_3} [inst : Fintype I]
+  [inst_1 : Fintype V] [Nonempty V] [inst_3 : DecidableEq I] (f : (I → V) → O) (i : I),
+  (∀ (k : I → V), Function.Injective fun v => f (Function.update k i v)) →
+    ∀ (t : O), (ProvenHashes.uniformProb fun k => f k = t) ≤ 1 / ↑(Fintype.card V)
+'ProvenHashes.uniformProb_of_injective_update' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.uniformProb_eq_card_subtype : ∀ {K : Type u_1} [inst : Fintype K] (E : K → Prop),
+  ProvenHashes.uniformProb E = ↑(Nat.card { k // E k }) / ↑(Fintype.card K)
+'ProvenHashes.uniformProb_eq_card_subtype' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.uniformProb_pi : ∀ {I : Type u_1} [inst : Fintype I] [inst_1 : DecidableEq I] {K : I → Type u_2}
+  [inst_2 : (i : I) → Fintype (K i)] (E : (i : I) → K i → Prop),
+  (ProvenHashes.uniformProb fun k => ∀ (i : I), E i (k i)) = ∏ i, ProvenHashes.uniformProb (E i)
+'ProvenHashes.uniformProb_pi' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.uniformProb_preimage : ∀ {K : Type u_1} {V : Type u_2} [inst : Fintype K] [inst_1 : Fintype V] (f : K → V)
+  (E : V → Prop) [inst_2 : DecidablePred E],
+  (ProvenHashes.uniformProb fun k => E (f k)) = ∑ v with E v, ProvenHashes.uniformProb fun k => f k = v
+'ProvenHashes.uniformProb_preimage' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.uniformProb_preimage_le : ∀ {K : Type u_1} {V : Type u_2} [inst : Fintype K] [Fintype V] (f : K → V)
+  (E : V → Prop) (a : ℚ≥0),
+  (∀ (v : V), (ProvenHashes.uniformProb fun k => f k = v) ≤ a) →
+    (ProvenHashes.uniformProb fun k => E (f k)) ≤ ↑(Nat.card { v // E v }) * a
+'ProvenHashes.uniformProb_preimage_le' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.uniformProb_of_update_bound : ∀ {I : Type u_1} {V : Type u_2} {O : Type u_3} [inst : Fintype I]
+  [inst_1 : Fintype V] [Nonempty V] [inst_3 : DecidableEq I] (f : (I → V) → O) (i : I) (t : O) (a : ℚ≥0),
+  (∀ (k : I → V), (ProvenHashes.uniformProb fun v => f (Function.update k i v) = t) ≤ a) →
+    (ProvenHashes.uniformProb fun k => f k = t) ≤ a
+'ProvenHashes.uniformProb_of_update_bound' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.uniformProb_of_tag_injective : ∀ {K : Type u_1} {O : Type u_2} {B : Type u_3} [inst : Fintype K]
+  [inst_1 : Fintype B] (f : K → O) (tag : K → B),
+  (∀ (u v : K), tag u = tag v → f u = f v → u = v) →
+    ∀ (t : O), (ProvenHashes.uniformProb fun k => f k = t) ≤ ↑(Fintype.card B) / ↑(Fintype.card K)
+'ProvenHashes.uniformProb_of_tag_injective' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.small_dvd : ∀ {N z : ℤ}, 0 < N → -N < z ∧ z < N → N ∣ z → z = 0
+'ProvenHashes.Halftime.small_dvd' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.unsigned_pair_injective : ∀ {q : ℕ} [NeZero q] (c c' d : ZMod q),
+  c ≠ c' → Function.Injective fun k => ↑c.val * ↑k.val - ↑c'.val * ↑(k + d).val
+'ProvenHashes.Halftime.unsigned_pair_injective' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.unsigned_pair_add_injective : ∀ {q : ℕ} [NeZero q] (c c' a b : ZMod q),
+  c ≠ c' → Function.Injective fun k => ↑c.val * ↑(a + k).val - ↑c'.val * ↑(b + k).val
+'ProvenHashes.Halftime.unsigned_pair_add_injective' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.nh_update_false : ∀ {q n : ℕ} (x k : Fin n × Bool → ZMod q) (i : Fin n) (v : ZMod q),
+  ProvenHashes.Halftime.nh x (Function.update k (i, false) v) =
+    ↑(x (i, true) + k (i, true)).val * ↑(x (i, false) + v).val + ProvenHashes.Halftime.rest✝ x k i
+'ProvenHashes.Halftime.nh_update_false' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.nh_update_true : ∀ {q n : ℕ} (x k : Fin n × Bool → ZMod q) (i : Fin n) (v : ZMod q),
+  ProvenHashes.Halftime.nh x (Function.update k (i, true) v) =
+    ↑(x (i, false) + k (i, false)).val * ↑(x (i, true) + v).val + ProvenHashes.Halftime.rest✝ x k i
+'ProvenHashes.Halftime.nh_update_true' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.nh_adu : ∀ {q n : ℕ} [inst : NeZero q] (x y : Fin n × Bool → ZMod q),
+  x ≠ y →
+    ∀ (t : ZMod (q * q)),
+      (ProvenHashes.uniformProb fun k => ProvenHashes.Halftime.nh x k - ProvenHashes.Halftime.nh y k = t) ≤ 1 / ↑q
+'ProvenHashes.Halftime.nh_adu' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.nh32_adu : ∀ {n : ℕ} (x y : Fin n × Bool → ZMod (2 ^ 32)),
+  x ≠ y →
+    ∀ (t : ZMod (2 ^ 64)),
+      (ProvenHashes.uniformProb fun k => ProvenHashes.Halftime.nh32 x k - ProvenHashes.Halftime.nh32 y k = t) ≤
+        1 / 2 ^ 32
+'ProvenHashes.Halftime.nh32_adu' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.nhLast_adu : ∀ {q n : ℕ} [inst : NeZero q] (x y : (Fin n × Bool → ZMod q) × ZMod (q * q)),
+  x.1 ≠ y.1 →
+    ∀ (t : ZMod (q * q)),
+      (ProvenHashes.uniformProb fun k => ProvenHashes.Halftime.nhLast x k - ProvenHashes.Halftime.nhLast y k = t) ≤
+        1 / ↑q
+'ProvenHashes.Halftime.nhLast_adu' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.nhLast_au : ∀ {q n : ℕ} [inst : NeZero q] (x y : (Fin n × Bool → ZMod q) × ZMod (q * q)),
+  x ≠ y →
+    (ProvenHashes.uniformProb fun k => ProvenHashes.Halftime.nhLast x k = ProvenHashes.Halftime.nhLast y k) ≤ 1 / ↑q
+'ProvenHashes.Halftime.nhLast_au' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.nhLast_same_hashed_difference : ∀ {q n : ℕ} (x : Fin n × Bool → ZMod q) (a b : ZMod (q * q))
+  (k : Fin n × Bool → ZMod q), ProvenHashes.Halftime.nhLast (x, a) k - ProvenHashes.Halftime.nhLast (x, b) k = a - b
+'ProvenHashes.Halftime.nhLast_same_hashed_difference' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.nhLast_same_hashed_target_probability : ∀ {q n : ℕ} [inst : NeZero q] (x : Fin n × Bool → ZMod q)
+  (a b : ZMod (q * q)),
+  (ProvenHashes.uniformProb fun k =>
+      ProvenHashes.Halftime.nhLast (x, a) k - ProvenHashes.Halftime.nhLast (x, b) k = a - b) =
+    1
+'ProvenHashes.Halftime.nhLast_same_hashed_target_probability' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.fibre_card_eq_kernel : ∀ {G : Type u_1} {H : Type u_2} [inst : AddCommGroup G]
+  [inst_1 : AddCommGroup H] (f : G →+ H) (b : H), (∃ x, f x = b) → Nat.card { x // f x = b } = Nat.card { x // f x = 0 }
+'ProvenHashes.Halftime.fibre_card_eq_kernel' depends on axioms: [propext, Classical.choice, Quot.sound]
+ProvenHashes.Halftime.scalar_kernel_card_nat : ∀ (N d : ℕ) [NeZero N], Nat.card { x // ↑d * x = 0 } = d.gcd N
+'ProvenHashes.Halftime.scalar_kernel_card_nat' depends on axioms: [propext, Classical.choice, Quot.sound]
+ProvenHashes.Halftime.scalar_kernel_card : ∀ (N : ℕ) [NeZero N] (d : ℤ), Nat.card { x // ↑d * x = 0 } = d.natAbs.gcd N
+'ProvenHashes.Halftime.scalar_kernel_card' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.diagonal_kernel_card : ∀ {I : Type u_1} [inst : Fintype I] [inst_1 : DecidableEq I] (N : ℕ)
+  [NeZero N] (d : I → ℤ), Nat.card { x // (Matrix.diagonal fun i => ↑(d i)).mulVec x = 0 } = ∏ i, (d i).natAbs.gcd N
+'ProvenHashes.Halftime.diagonal_kernel_card' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.kernel_card_units : ∀ {I : Type u_1} {R : Type u_2} [inst : Fintype I] [inst_1 : DecidableEq I]
+  [inst_2 : CommRing R] [Fintype R] (A U V : Matrix I I R),
+  IsUnit U → IsUnit V → Nat.card { x // (U * A * V).mulVec x = 0 } = Nat.card { x // A.mulVec x = 0 }
+'ProvenHashes.Halftime.kernel_card_units' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.integer_diagonalization : ∀ {I : Type u_1} [inst : Fintype I] [inst_1 : DecidableEq I]
+  (A : Matrix I I ℤ), A.det ≠ 0 → ∃ U V d, IsUnit U ∧ IsUnit V ∧ U * A * V = Matrix.diagonal d
+'ProvenHashes.Halftime.integer_diagonalization' depends on axioms: [propext, Classical.choice, Quot.sound]
+ProvenHashes.Halftime.gcd_two_pow_of_val_le : ∀ (a m : ℕ),
+  a ≠ 0 → padicValNat 2 a ≤ m → a.gcd (2 ^ m) = 2 ^ padicValNat 2 a
+'ProvenHashes.Halftime.gcd_two_pow_of_val_le' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.v2_prod : ∀ {I : Type u_1} [DecidableEq I] (s : Finset I) (a : I → ℕ),
+  (∀ i ∈ s, a i ≠ 0) → padicValNat 2 (∏ i ∈ s, a i) = ∑ i ∈ s, padicValNat 2 (a i)
+'ProvenHashes.Halftime.v2_prod' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.matrix_kernel_card : ∀ {I : Type u_1} [inst : Fintype I] [inst_1 : DecidableEq I]
+  (A : Matrix I I ℤ) (m : ℕ),
+  A.det ≠ 0 →
+    padicValNat 2 A.det.natAbs ≤ m →
+      Nat.card { x // (A.map ⇑(Int.castRingHom (ZMod (2 ^ m)))).mulVec x = 0 } = 2 ^ padicValNat 2 A.det.natAbs
+'ProvenHashes.Halftime.matrix_kernel_card' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.matrix_fibre_card : ∀ {r τ : ℕ} (A : Matrix (Fin r) (Fin r) ℤ),
+  A.det ≠ 0 →
+    padicValNat 2 A.det.natAbs = τ →
+      τ < 64 →
+        ∀ (b : Fin r → ZMod (2 ^ 64)),
+          (∃ x, (A.map ⇑(Int.castRingHom (ZMod (2 ^ 64)))).mulVec x = b) →
+            Nat.card { x // (A.map ⇑(Int.castRingHom (ZMod (2 ^ 64)))).mulVec x = b } = 2 ^ τ
+'ProvenHashes.Halftime.matrix_fibre_card' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.matrix_fibre_card_le : ∀ {I : Type u_1} [inst : Fintype I] [inst_1 : DecidableEq I]
+  (A : Matrix I I ℤ) (m : ℕ),
+  A.det ≠ 0 →
+    padicValNat 2 A.det.natAbs ≤ m →
+      ∀ (b : I → ZMod (2 ^ m)),
+        Nat.card { x // (A.map ⇑(Int.castRingHom (ZMod (2 ^ m)))).mulVec x = b } ≤ 2 ^ padicValNat 2 A.det.natAbs
+'ProvenHashes.Halftime.matrix_fibre_card_le' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.det2_eq_det : ∀ {m n : ℕ} (T : Matrix (Fin m) (Fin n) ℤ) (r s : Fin m) (a b : Fin n),
+  ProvenHashes.Halftime.det2 T r s a b = (T.submatrix ![r, s] ![a, b]).det
+'ProvenHashes.Halftime.det2_eq_det' depends on axioms: [propext, Classical.choice, Quot.sound]
+ProvenHashes.Halftime.det3_eq_det : ∀ (T : Matrix (Fin 3) (Fin 9) ℤ) (a b c : Fin 9),
+  ProvenHashes.Halftime.det3 T a b c = (T.submatrix id ![a, b, c]).det
+'ProvenHashes.Halftime.det3_eq_det' depends on axioms: [propext, Classical.choice, Quot.sound]
+ProvenHashes.Halftime.T2_minors : ∀ (a b : Fin 7),
+  a < b →
+    ProvenHashes.Halftime.det2 ProvenHashes.Halftime.T2 0 1 a b ≠ 0 ∧
+      ¬8 ∣ ProvenHashes.Halftime.det2 ProvenHashes.Halftime.T2 0 1 a b
+'ProvenHashes.Halftime.T2_minors' depends on axioms: [propext, Quot.sound]
+ProvenHashes.Halftime.T3_minors : ∀ (a b c : Fin 9),
+  a < b →
+    b < c →
+      ProvenHashes.Halftime.det3 ProvenHashes.Halftime.T3 a b c ≠ 0 ∧
+        ¬8 ∣ ProvenHashes.Halftime.det3 ProvenHashes.Halftime.T3 a b c
+'ProvenHashes.Halftime.T3_minors' depends on axioms: [propext, Quot.sound]
+ProvenHashes.Halftime.T2_worst_minor : ProvenHashes.Halftime.det2 ProvenHashes.Halftime.T2 0 1 0 5 = 4
+'ProvenHashes.Halftime.T2_worst_minor' depends on axioms: [propext, Quot.sound]
+ProvenHashes.Halftime.T3_worst_minor : ProvenHashes.Halftime.det3 ProvenHashes.Halftime.T3 0 1 3 = 12
+'ProvenHashes.Halftime.T3_worst_minor' depends on axioms: [propext, Quot.sound]
+@ProvenHashes.Halftime.valuation_le_two : ∀ {d : ℤ}, d ≠ 0 → ¬8 ∣ d → padicValNat 2 d.natAbs ≤ 2
+'ProvenHashes.Halftime.valuation_le_two' depends on axioms: [propext, Classical.choice, Quot.sound]
+ProvenHashes.Halftime.T2_distinct_minors : ∀ (a b : Fin 7),
+  a ≠ b →
+    ProvenHashes.Halftime.det2 ProvenHashes.Halftime.T2 0 1 a b ≠ 0 ∧
+      ¬8 ∣ ProvenHashes.Halftime.det2 ProvenHashes.Halftime.T2 0 1 a b
+'ProvenHashes.Halftime.T2_distinct_minors' depends on axioms: [propext, Quot.sound]
+ProvenHashes.Halftime.T3_distinct_minors : ∀ (a b c : Fin 9),
+  a ≠ b →
+    a ≠ c →
+      b ≠ c →
+        ProvenHashes.Halftime.det3 ProvenHashes.Halftime.T3 a b c ≠ 0 ∧
+          ¬8 ∣ ProvenHashes.Halftime.det3 ProvenHashes.Halftime.T3 a b c
+'ProvenHashes.Halftime.T3_distinct_minors' depends on axioms: [propext, Quot.sound]
+ProvenHashes.Halftime.T2_minor_valuations : ∀ (j : Fin 2 ↪ Fin 7),
+  (ProvenHashes.Halftime.T2.submatrix id ⇑j).det ≠ 0 ∧
+    padicValNat 2 (ProvenHashes.Halftime.T2.submatrix id ⇑j).det.natAbs ≤ 2
+'ProvenHashes.Halftime.T2_minor_valuations' depends on axioms: [propext, Classical.choice, Quot.sound]
+ProvenHashes.Halftime.T3_minor_valuations : ∀ (j : Fin 3 ↪ Fin 9),
+  (ProvenHashes.Halftime.T3.submatrix id ⇑j).det ≠ 0 ∧
+    padicValNat 2 (ProvenHashes.Halftime.T3.submatrix id ⇑j).det.natAbs ≤ 2
+'ProvenHashes.Halftime.T3_minor_valuations' depends on axioms: [propext, Classical.choice, Quot.sound]
+ProvenHashes.Halftime.T2_projection_coefficients : ∀ (a b : Fin 7),
+  a < b →
+    ProvenHashes.Halftime.singleton2 0 a b + ProvenHashes.Halftime.singleton2 1 a b ≤ 5 ∧
+      ProvenHashes.Halftime.full2 a b ≤ 4
+'ProvenHashes.Halftime.T2_projection_coefficients' depends on axioms: [propext, Quot.sound]
+ProvenHashes.Halftime.T3_projection_coefficients : ∀ (a b c : Fin 9),
+  a < b →
+    b < c →
+      ProvenHashes.Halftime.singleton3 0 a b c + ProvenHashes.Halftime.singleton3 1 a b c +
+            ProvenHashes.Halftime.singleton3 2 a b c ≤
+          6 ∧
+        ProvenHashes.Halftime.pair3 0 1 a b c + ProvenHashes.Halftime.pair3 0 2 a b c +
+              ProvenHashes.Halftime.pair3 1 2 a b c ≤
+            9 ∧
+          ProvenHashes.Halftime.full3 a b c ≤ 4
+'ProvenHashes.Halftime.T3_projection_coefficients' depends on axioms: [propext, Quot.sound]
+ProvenHashes.Halftime.projection2_le : ∀ (a b : Fin 7),
+  a < b → ∀ (u v : ℚ≥0), ProvenHashes.Halftime.projection2 a b u v ≤ (u + v) ^ (2 - 1) * (u + 2 ^ 2 * v)
+'ProvenHashes.Halftime.projection2_le' depends on axioms: [propext, Classical.choice, Quot.sound]
+ProvenHashes.Halftime.projection3_le : ∀ (a b c : Fin 9),
+  a < b → b < c → ∀ (u v : ℚ≥0), ProvenHashes.Halftime.projection3 a b c u v ≤ (u + v) ^ (3 - 1) * (u + 2 ^ 2 * v)
+'ProvenHashes.Halftime.projection3_le' depends on axioms: [propext, Classical.choice, Quot.sound]
+ProvenHashes.Halftime.projection2_subset_sum : ∀ (a b : Fin 7) (u v : ℚ≥0),
+  ∑ S ∈ Finset.univ.powerset, ↑(ProvenHashes.Halftime.coefficient2 a b S) * u ^ (2 - S.card) * v ^ S.card =
+    ProvenHashes.Halftime.projection2 a b u v
+'ProvenHashes.Halftime.projection2_subset_sum' depends on axioms: [propext, Classical.choice, Quot.sound]
+ProvenHashes.Halftime.projection3_subset_sum : ∀ (a b c : Fin 9) (u v : ℚ≥0),
+  ∑ S ∈ Finset.univ.powerset, ↑(ProvenHashes.Halftime.coefficient3 a b c S) * u ^ (3 - S.card) * v ^ S.card =
+    ProvenHashes.Halftime.projection3 a b c u v
+'ProvenHashes.Halftime.projection3_subset_sum' depends on axioms: [propext, Classical.choice, Quot.sound]
+ProvenHashes.Halftime.projection_polynomial_T2 : ∀ (a b : Fin 7),
+  a < b →
+    ∀ (u v : ℚ≥0),
+      ∑ S ∈ Finset.univ.powerset, ↑(ProvenHashes.Halftime.coefficient2 a b S) * u ^ (2 - S.card) * v ^ S.card ≤
+        (u + v) ^ (2 - 1) * (u + 2 ^ 2 * v)
+'ProvenHashes.Halftime.projection_polynomial_T2' depends on axioms: [propext, Classical.choice, Quot.sound]
+ProvenHashes.Halftime.projection_polynomial_T3 : ∀ (a b c : Fin 9),
+  a < b →
+    b < c →
+      ∀ (u v : ℚ≥0),
+        ∑ S ∈ Finset.univ.powerset, ↑(ProvenHashes.Halftime.coefficient3 a b c S) * u ^ (3 - S.card) * v ^ S.card ≤
+          (u + v) ^ (3 - 1) * (u + 2 ^ 2 * v)
+'ProvenHashes.Halftime.projection_polynomial_T3' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.tree_collision_bound : ∀ {K : Type u_1} {W : Type u_2} [inst : Fintype K] [Nonempty K] {f : ℕ}
+  (g : K → (Fin f → W) → W) (ε : ℚ≥0),
+  (∀ (x y : Fin f → W), x ≠ y → (ProvenHashes.uniformProb fun k => g k x = g k y) ≤ ε) →
+    ∀ {h : ℕ} (s : ProvenHashes.Halftime.TreeShape f h) (x y : ProvenHashes.Halftime.TreeInput W s),
+      x ≠ y →
+        (ProvenHashes.uniformProb fun k =>
+            ProvenHashes.Halftime.treeHash g s x k = ProvenHashes.Halftime.treeHash g s y k) ≤
+          ↑h * ε
+'ProvenHashes.Halftime.tree_collision_bound' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.forest_collision_bound : ∀ {I : Type u_1} {K : Type u_2} {W : Type u_3} [inst : Fintype K]
+  [Nonempty K] {f h : ℕ} (g : K → (Fin f → W) → W) (ε : ℚ≥0),
+  (∀ (x y : Fin f → W), x ≠ y → (ProvenHashes.uniformProb fun k => g k x = g k y) ≤ ε) →
+    ∀ (s : I → ProvenHashes.Halftime.TreeShape f h) (x y : (i : I) → ProvenHashes.Halftime.TreeInput W (s i)),
+      x ≠ y →
+        (ProvenHashes.uniformProb fun k =>
+            ProvenHashes.Halftime.forestHash g s x k = ProvenHashes.Halftime.forestHash g s y k) ≤
+          ↑h * ε
+'ProvenHashes.Halftime.forest_collision_bound' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.compose_difference_bound : ∀ {K : Type u_1} {J : Type u_2} {M : Type u_3} {R : Type u_4}
+  [inst : Fintype K] [inst_1 : Fintype J] [Nonempty K] [Nonempty J] [inst_4 : AddCommGroup R] (s s' : K → M)
+  (g : J → M → R) (a b : ℚ≥0),
+  (ProvenHashes.uniformProb fun k => s k = s' k) ≤ a →
+    (∀ (k : K), s k ≠ s' k → ∀ (t : R), (ProvenHashes.uniformProb fun j => g j (s k) - g j (s' k) = t) ≤ b) →
+      ∀ (t : R), (ProvenHashes.uniformProb fun k => g k.2 (s k.1) - g k.2 (s' k.1) = t) ≤ a + b
+'ProvenHashes.Halftime.compose_difference_bound' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.forest_final_adu : ∀ {I : Type u_1} {K : Type u_2} {J : Type u_3} {W : Type u_4} {R : Type u_5}
+  [inst : Fintype K] [inst_1 : Fintype J] [Nonempty K] [Nonempty J] [inst_4 : AddCommGroup R] {f h : ℕ}
+  (g : K → (Fin f → W) → W) (ε : ℚ≥0),
+  (∀ (x y : Fin f → W), x ≠ y → (ProvenHashes.uniformProb fun k => g k x = g k y) ≤ ε) →
+    ∀ (s : I → ProvenHashes.Halftime.TreeShape f h) (x y : (i : I) → ProvenHashes.Halftime.TreeInput W (s i)),
+      x ≠ y →
+        ∀ (final : J → (I → W) → R),
+          (∀ (x y : I → W), x ≠ y → ∀ (t : R), (ProvenHashes.uniformProb fun k => final k x - final k y = t) ≤ ε) →
+            ∀ (t : R),
+              (ProvenHashes.uniformProb fun k =>
+                  final k.2 (ProvenHashes.Halftime.forestHash g s x k.1) -
+                      final k.2 (ProvenHashes.Halftime.forestHash g s y k.1) =
+                    t) ≤
+                ↑(h + 1) * ε
+'ProvenHashes.Halftime.forest_final_adu' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.matrix_atom_bound : ∀ {I : Type u_1} {K : Type u_2} [inst : Fintype I] [inst_1 : DecidableEq I]
+  [inst_2 : Fintype K] (A : Matrix I I ℤ) (m : ℕ),
+  A.det ≠ 0 →
+    padicValNat 2 A.det.natAbs ≤ m →
+      ∀ (d : I → K → ZMod (2 ^ m)) (ε : ℚ≥0),
+        (∀ (i : I) (t : ZMod (2 ^ m)), (ProvenHashes.uniformProb fun k => d i k = t) ≤ ε) →
+          ∀ (b : I → ZMod (2 ^ m)),
+            (ProvenHashes.uniformProb fun k =>
+                ((A.map ⇑(Int.castRingHom (ZMod (2 ^ m)))).mulVec fun i => d i (k i)) = b) ≤
+              2 ^ padicValNat 2 A.det.natAbs * ε ^ Fintype.card I
+'ProvenHashes.Halftime.matrix_atom_bound' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.ehc_conditioned_adu : ∀ {I : Type u_1} {K : Type u_2} {J : Type u_3} [inst : Fintype I]
+  [inst_1 : DecidableEq I] [inst_2 : Fintype K] [inst_3 : Fintype J] [Nonempty J] (A : Matrix I I ℤ),
+  ∀ t ≤ 64,
+    A.det ≠ 0 →
+      padicValNat 2 A.det.natAbs ≤ t →
+        ∀ (d : I → K → ZMod (2 ^ 64)) (ε : ℚ≥0),
+          (∀ (i : I) (z : ZMod (2 ^ 64)), (ProvenHashes.uniformProb fun k => d i k = z) ≤ ε) →
+            ∀ (offset : J → I → ZMod (2 ^ 64)) (b : I → ZMod (2 ^ 64)),
+              (ProvenHashes.uniformProb fun k =>
+                  ((A.map ⇑(Int.castRingHom (ZMod (2 ^ 64)))).mulVec fun i => d i (k.2 i)) + offset k.1 = b) ≤
+                2 ^ t * ε ^ Fintype.card I
+'ProvenHashes.Halftime.ehc_conditioned_adu' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.combine_selected_bound : ∀ {I : Type u_1} {K : Type u_2} [inst : Fintype I]
+  [inst_1 : DecidableEq I] [inst_2 : Fintype K] [Nonempty K] {r t : ℕ} (T : Matrix (Fin r) I ℤ) (j : Fin r ↪ I),
+  (T.submatrix id ⇑j).det ≠ 0 →
+    padicValNat 2 (T.submatrix id ⇑j).det.natAbs ≤ t →
+      t ≤ 64 →
+        ∀ (d : I → K → ZMod (2 ^ 64)) (ε : ℚ≥0),
+          (∀ (i : Fin r) (z : ZMod (2 ^ 64)), (ProvenHashes.uniformProb fun k => d (j i) k = z) ≤ ε) →
+            ∀ (b : Fin r → ZMod (2 ^ 64)),
+              (ProvenHashes.uniformProb fun k =>
+                  ((T.map ⇑(Int.castRingHom (ZMod (2 ^ 64)))).mulVec fun i => d i (k i)) = b) ≤
+                2 ^ t * ε ^ r
+'ProvenHashes.Halftime.combine_selected_bound' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.ehc_adu : ∀ {X : Type u_1} {I : Type u_2} [inst : Fintype I] [inst_1 : DecidableEq I] {r n t : ℕ}
+  (encode : X → I → Fin n × Bool → ZMod (2 ^ 32)) (T : Matrix (Fin r) I ℤ),
+  t ≤ 64 →
+    (∀ (j : Fin r ↪ I), (T.submatrix id ⇑j).det ≠ 0 ∧ padicValNat 2 (T.submatrix id ⇑j).det.natAbs ≤ t) →
+      (∀ (x y : X), x ≠ y → ∃ j, ∀ (i : Fin r), encode x (j i) ≠ encode y (j i)) →
+        ∀ (x y : X),
+          x ≠ y →
+            ∀ (b : Fin r → ZMod (2 ^ 64)),
+              (ProvenHashes.uniformProb fun k =>
+                  ProvenHashes.Halftime.ehc encode T x k - ProvenHashes.Halftime.ehc encode T y k = b) ≤
+                2 ^ t / 2 ^ (32 * r)
+'ProvenHashes.Halftime.ehc_adu' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.ehc_T2_adu : ∀ {X : Type u_1} {n : ℕ} (encode : X → Fin 7 → Fin n × Bool → ZMod (2 ^ 32)),
+  (∀ (x y : X), x ≠ y → ∃ j, ∀ (i : Fin 2), encode x (j i) ≠ encode y (j i)) →
+    ∀ (x y : X),
+      x ≠ y →
+        ∀ (b : Fin 2 → ZMod (2 ^ 64)),
+          (ProvenHashes.uniformProb fun k =>
+              ProvenHashes.Halftime.ehc encode ProvenHashes.Halftime.T2 x k -
+                  ProvenHashes.Halftime.ehc encode ProvenHashes.Halftime.T2 y k =
+                b) ≤
+            1 / 2 ^ 62
+'ProvenHashes.Halftime.ehc_T2_adu' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.ehc_T3_adu : ∀ {X : Type u_1} {n : ℕ} (encode : X → Fin 9 → Fin n × Bool → ZMod (2 ^ 32)),
+  (∀ (x y : X), x ≠ y → ∃ j, ∀ (i : Fin 3), encode x (j i) ≠ encode y (j i)) →
+    ∀ (x y : X),
+      x ≠ y →
+        ∀ (b : Fin 3 → ZMod (2 ^ 64)),
+          (ProvenHashes.uniformProb fun k =>
+              ProvenHashes.Halftime.ehc encode ProvenHashes.Halftime.T3 x k -
+                  ProvenHashes.Halftime.ehc encode ProvenHashes.Halftime.T3 y k =
+                b) ≤
+            1 / 2 ^ 94
+'ProvenHashes.Halftime.ehc_T3_adu' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.mean_mono : ∀ {K : Type u_1} [inst : Fintype K] {f g : K → ℚ≥0},
+  (∀ (k : K), f k ≤ g k) → ProvenHashes.Halftime.mean f ≤ ProvenHashes.Halftime.mean g
+'ProvenHashes.Halftime.mean_mono' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.mean_const : ∀ {K : Type u_1} [inst : Fintype K] [Nonempty K] (c : ℚ≥0),
+  (ProvenHashes.Halftime.mean fun x => c) = c
+'ProvenHashes.Halftime.mean_const' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.mean_add : ∀ {K : Type u_1} [inst : Fintype K] (f g : K → ℚ≥0),
+  (ProvenHashes.Halftime.mean fun k => f k + g k) = ProvenHashes.Halftime.mean f + ProvenHashes.Halftime.mean g
+'ProvenHashes.Halftime.mean_add' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.mean_mul : ∀ {K : Type u_1} [inst : Fintype K] (c : ℚ≥0) (f : K → ℚ≥0),
+  (ProvenHashes.Halftime.mean fun k => c * f k) = c * ProvenHashes.Halftime.mean f
+'ProvenHashes.Halftime.mean_mul' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.mean_indicator : ∀ {K : Type u_1} [inst : Fintype K] (E : K → Prop),
+  ProvenHashes.Halftime.mean (ProvenHashes.Halftime.indicator E) = ProvenHashes.uniformProb E
+'ProvenHashes.Halftime.mean_indicator' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.component_product_bound : ∀ {I : Type u_1} {K : Type u_2} {J : Type u_3} [inst : Fintype I]
+  [inst_1 : DecidableEq I] [inst_2 : Fintype K] [inst_3 : Fintype J] (E : I → K → Prop) (C : K → I → J → Prop)
+  (ρ : ℚ≥0),
+  (∀ (k : K) (i : I), ¬E i k → ProvenHashes.uniformProb (C k i) ≤ ρ) →
+    (ProvenHashes.uniformProb fun k => ∀ (i : I), C k.1 i (k.2 i)) ≤
+      ProvenHashes.Halftime.mean fun k => ∏ i, (ρ + ProvenHashes.Halftime.indicator (E i) k)
+'ProvenHashes.Halftime.component_product_bound' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.product_two_expansion : ∀ {K : Type u_1} (E : Fin 2 → K → Prop) (ρ : ℚ≥0) (k : K),
+  ∏ i, (ρ + ProvenHashes.Halftime.indicator (E i) k) =
+    ρ ^ 2 + ρ * (ProvenHashes.Halftime.indicator (E 0) k + ProvenHashes.Halftime.indicator (E 1) k) +
+      ProvenHashes.Halftime.indicator (fun k => E 0 k ∧ E 1 k) k
+'ProvenHashes.Halftime.product_two_expansion' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.product_three_expansion : ∀ {K : Type u_1} (E : Fin 3 → K → Prop) (ρ : ℚ≥0) (k : K),
+  ∏ i, (ρ + ProvenHashes.Halftime.indicator (E i) k) =
+    ρ ^ 3 +
+          ρ ^ 2 *
+            (ProvenHashes.Halftime.indicator (E 0) k + ProvenHashes.Halftime.indicator (E 1) k +
+              ProvenHashes.Halftime.indicator (E 2) k) +
+        ρ *
+          (ProvenHashes.Halftime.indicator (fun k => E 0 k ∧ E 1 k) k +
+              ProvenHashes.Halftime.indicator (fun k => E 0 k ∧ E 2 k) k +
+            ProvenHashes.Halftime.indicator (fun k => E 1 k ∧ E 2 k) k) +
+      ProvenHashes.Halftime.indicator (fun k => E 0 k ∧ E 1 k ∧ E 2 k) k
+'ProvenHashes.Halftime.product_three_expansion' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.end_to_end_two_from_subsets : ∀ {K : Type u_1} {J : Type u_2} [inst : Fintype K] [Nonempty K]
+  [inst_2 : Fintype J] (E : Fin 2 → K → Prop) (C : K → Fin 2 → J → Prop) (ε : ℚ≥0) (h : ℕ),
+  (∀ (k : K) (i : Fin 2), ¬E i k → ProvenHashes.uniformProb (C k i) ≤ ↑(h + 1) * ε) →
+    ProvenHashes.uniformProb (E 0) + ProvenHashes.uniformProb (E 1) ≤ 5 * ε →
+      (ProvenHashes.uniformProb fun k => E 0 k ∧ E 1 k) ≤ 4 * ε ^ 2 →
+        (ProvenHashes.uniformProb fun k => ∀ (i : Fin 2), C k.1 i (k.2 i)) ≤ min 1 (ε ^ 2 * (↑h + 2) * (↑h + 5))
+'ProvenHashes.Halftime.end_to_end_two_from_subsets' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.end_to_end_three_from_subsets : ∀ {K : Type u_1} {J : Type u_2} [inst : Fintype K] [Nonempty K]
+  [inst_2 : Fintype J] (E : Fin 3 → K → Prop) (C : K → Fin 3 → J → Prop) (ε : ℚ≥0) (h : ℕ),
+  (∀ (k : K) (i : Fin 3), ¬E i k → ProvenHashes.uniformProb (C k i) ≤ ↑(h + 1) * ε) →
+    ProvenHashes.uniformProb (E 0) + ProvenHashes.uniformProb (E 1) + ProvenHashes.uniformProb (E 2) ≤ 6 * ε →
+      (((ProvenHashes.uniformProb fun k => E 0 k ∧ E 1 k) + ProvenHashes.uniformProb fun k => E 0 k ∧ E 2 k) +
+            ProvenHashes.uniformProb fun k => E 1 k ∧ E 2 k) ≤
+          9 * ε ^ 2 →
+        (ProvenHashes.uniformProb fun k => E 0 k ∧ E 1 k ∧ E 2 k) ≤ 4 * ε ^ 3 →
+          (ProvenHashes.uniformProb fun k => ∀ (i : Fin 3), C k.1 i (k.2 i)) ≤ min 1 (ε ^ 3 * (↑h + 2) ^ 2 * (↑h + 5))
+'ProvenHashes.Halftime.end_to_end_three_from_subsets' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.tail_conditioning : ∀ {K : Type u_1} {J : Type u_2} {R : Type u_3} [inst : Fintype K]
+  [inst_1 : Fintype J] [Nonempty K] [inst_3 : AddCommGroup R] (prefixHash : K → R) (tail : J → R) (b : R) (ε : ℚ≥0),
+  (∀ (t : R), (ProvenHashes.uniformProb fun j => tail j = t) ≤ ε) →
+    (ProvenHashes.uniformProb fun k => prefixHash k.1 + tail k.2 = b) ≤ ε
+'ProvenHashes.Halftime.tail_conditioning' depends on axioms: [propext, Classical.choice, Quot.sound]
+ProvenHashes.Halftime.numeric_6804 : (1 / 2 ^ 32) ^ 3 * (16 + 2) ^ 2 * (16 + 1 + 2 ^ 2) = 6804 / 2 ^ 96
+'ProvenHashes.Halftime.numeric_6804' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.collision_6804_from_subsets : ∀ {K : Type u_1} {J : Type u_2} [inst : Fintype K] [Nonempty K]
+  [inst_2 : Fintype J] (E : Fin 3 → K → Prop) (C : K → Fin 3 → J → Prop),
+  (∀ (k : K) (i : Fin 3), ¬E i k → ProvenHashes.uniformProb (C k i) ≤ 17 / 2 ^ 32) →
+    ProvenHashes.uniformProb (E 0) + ProvenHashes.uniformProb (E 1) + ProvenHashes.uniformProb (E 2) ≤ 6 / 2 ^ 32 →
+      (((ProvenHashes.uniformProb fun k => E 0 k ∧ E 1 k) + ProvenHashes.uniformProb fun k => E 0 k ∧ E 2 k) +
+            ProvenHashes.uniformProb fun k => E 1 k ∧ E 2 k) ≤
+          9 / 2 ^ 64 →
+        (ProvenHashes.uniformProb fun k => E 0 k ∧ E 1 k ∧ E 2 k) ≤ 4 / 2 ^ 96 →
+          (ProvenHashes.uniformProb fun k => ∀ (i : Fin 3), C k.1 i (k.2 i)) ≤ 6804 / 2 ^ 96
+'ProvenHashes.Halftime.collision_6804_from_subsets' depends on axioms: [propext, Classical.choice, Quot.sound]
+ProvenHashes.Halftime.zmod_projection_fibre_card : ∀ (M B : ℕ) [NeZero M] [NeZero B] (c : ZMod M),
+  Nat.card { x // (ZMod.castHom ⋯ (ZMod M)) x = c } = B
+'ProvenHashes.Halftime.zmod_projection_fibre_card' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.nh_lowBits_atom_bound : ∀ {n bits : ℕ} (hb : bits ≤ 64) (x y : Fin n × Bool → ZMod (2 ^ 32)),
+  x ≠ y →
+    ∀ (c : ZMod (2 ^ bits)),
+      Nat.card { v // (ProvenHashes.Halftime.lowBits bits hb) v = c } ≤ 2 ^ (64 - bits) →
+        (ProvenHashes.uniformProb fun k =>
+            (ProvenHashes.Halftime.lowBits bits hb) (ProvenHashes.Halftime.nh32 x k - ProvenHashes.Halftime.nh32 y k) =
+              c) ≤
+          2 ^ (64 - bits) / 2 ^ 32
+'ProvenHashes.Halftime.nh_lowBits_atom_bound' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.nh_mod63_adu : ∀ {n : ℕ} (x y : Fin n × Bool → ZMod (2 ^ 32)),
+  x ≠ y →
+    ∀ (c : ZMod (2 ^ 63)),
+      (ProvenHashes.uniformProb fun k =>
+          (ProvenHashes.Halftime.lowBits 63 ⋯) (ProvenHashes.Halftime.nh32 x k - ProvenHashes.Halftime.nh32 y k) = c) ≤
+        2 / 2 ^ 32
+'ProvenHashes.Halftime.nh_mod63_adu' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.nh_mod62_coarse : ∀ {n : ℕ} (x y : Fin n × Bool → ZMod (2 ^ 32)),
+  x ≠ y →
+    ∀ (c : ZMod (2 ^ 62)),
+      (ProvenHashes.uniformProb fun k =>
+          (ProvenHashes.Halftime.lowBits 62 ⋯) (ProvenHashes.Halftime.nh32 x k - ProvenHashes.Halftime.nh32 y k) = c) ≤
+        4 / 2 ^ 32
+'ProvenHashes.Halftime.nh_mod62_coarse' depends on axioms: [propext, Classical.choice, Quot.sound]
+ProvenHashes.Halftime.power_two_cancel : ∀ (a b : ℕ) (d s : ℤ), ¬2 ^ (a + 1) ∣ d → 2 ^ (a + b) ∣ d * s → 2 ^ b ∣ s
+'ProvenHashes.Halftime.power_two_cancel' depends on axioms: [propext, Classical.choice, Quot.sound]
+ProvenHashes.Halftime.pair62_divisibility : ∀ (c c' d u v : ZMod (2 ^ 32)),
+  ProvenHashes.Halftime.pair62 c c' d u = ProvenHashes.Halftime.pair62 c c' d v →
+    ↑(v + d).val - ↑(u + d).val = ↑v.val - ↑u.val → 2 ^ 62 ∣ (↑c.val - ↑c'.val) * (↑v.val - ↑u.val)
+'ProvenHashes.Halftime.pair62_divisibility' depends on axioms: [propext, Classical.choice, Quot.sound]
+ProvenHashes.Halftime.pair62_regular : ∀ (c c' d : ZMod (2 ^ 32)),
+  ¬2 ^ 31 ∣ ↑c.val - ↑c'.val →
+    ∀ (t : ZMod (2 ^ 62)), (ProvenHashes.uniformProb fun k => ProvenHashes.Halftime.pair62 c c' d k = t) ≤ 2 / 2 ^ 32
+'ProvenHashes.Halftime.pair62_regular' depends on axioms: [propext, Classical.choice, Quot.sound]
+ProvenHashes.Halftime.pair62_high : ∀ (c c' d : ZMod (2 ^ 32)),
+  c ≠ c' →
+    d.val = 0 ∨ d.val = 2 ^ 31 →
+      ∀ (t : ZMod (2 ^ 62)), (ProvenHashes.uniformProb fun k => ProvenHashes.Halftime.pair62 c c' d k = t) ≤ 2 / 2 ^ 32
+'ProvenHashes.Halftime.pair62_high' depends on axioms: [propext, Classical.choice, Quot.sound]
+ProvenHashes.Halftime.halfLow_val : ∀ (c : ZMod (2 ^ 32)), ProvenHashes.Halftime.halfLow c = ↑c.val
+'ProvenHashes.Halftime.halfLow_val' depends on axioms: [propext, Quot.sound]
+ProvenHashes.Halftime.halfLow_eq_iff : ∀ (c c' : ZMod (2 ^ 32)),
+  ProvenHashes.Halftime.halfLow c = ProvenHashes.Halftime.halfLow c' ↔ 2 ^ 31 ∣ ↑c.val - ↑c'.val
+'ProvenHashes.Halftime.halfLow_eq_iff' depends on axioms: [propext, Classical.choice, Quot.sound]
+ProvenHashes.Halftime.pair62_add_bound : ∀ (c c' a b : ZMod (2 ^ 32)),
+  c ≠ c' →
+    ProvenHashes.Halftime.halfLow c ≠ ProvenHashes.Halftime.halfLow c' ∨
+        ProvenHashes.Halftime.halfLow a = ProvenHashes.Halftime.halfLow b →
+      ∀ (t : ZMod (2 ^ 62)),
+        (ProvenHashes.uniformProb fun k => ↑c.val * ↑(a + k).val - ↑c'.val * ↑(b + k).val = t) ≤ 2 / 2 ^ 32
+'ProvenHashes.Halftime.pair62_add_bound' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.nh_mod62_coordinate : ∀ {n : ℕ} (x y : Fin n × Bool → ZMod (2 ^ 32)) (i : Fin n) (b : Bool),
+  x (i, b) ≠ y (i, b) →
+    ProvenHashes.Halftime.halfLow (x (i, b)) ≠ ProvenHashes.Halftime.halfLow (y (i, b)) ∨
+        ProvenHashes.Halftime.halfLow (x (i, !b)) = ProvenHashes.Halftime.halfLow (y (i, !b)) →
+      ∀ (c : ZMod (2 ^ 62)),
+        (ProvenHashes.uniformProb fun k =>
+            (ProvenHashes.Halftime.lowBits 62 ⋯) (ProvenHashes.Halftime.nh32 x k - ProvenHashes.Halftime.nh32 y k) =
+              c) ≤
+          2 / 2 ^ 32
+'ProvenHashes.Halftime.nh_mod62_coordinate' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.nh_mod62_adu : ∀ {n : ℕ} (x y : Fin n × Bool → ZMod (2 ^ 32)),
+  x ≠ y →
+    ∀ (c : ZMod (2 ^ 62)),
+      (ProvenHashes.uniformProb fun k =>
+          (ProvenHashes.Halftime.lowBits 62 ⋯) (ProvenHashes.Halftime.nh32 x k - ProvenHashes.Halftime.nh32 y k) = c) ≤
+        2 / 2 ^ 32
+'ProvenHashes.Halftime.nh_mod62_adu' depends on axioms: [propext, Classical.choice, Quot.sound]
+ProvenHashes.Halftime.truncatedNH62Bound : ProvenHashes.Halftime.TruncatedNH62Bound
+'ProvenHashes.Halftime.truncatedNH62Bound' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.valuation_le_four : ∀ {d : ℤ}, d ≠ 0 → ¬32 ∣ d → padicValNat 2 d.natAbs ≤ 4
+'ProvenHashes.Halftime.valuation_le_four' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.combine_small_weight_bound : ∀ {I : Type u_1} {K : Type u_2} [inst : Fintype I]
+  [inst_1 : DecidableEq I] [inst_2 : Fintype K] [Nonempty K] {r : ℕ},
+  r ≤ 2 →
+    ∀ (T : Matrix (Fin r) I ℤ) (j : Fin r ↪ I),
+      ((T.submatrix id ⇑j).det ≠ 0 → ¬32 ∣ (T.submatrix id ⇑j).det) →
+        ∀ (d : I → K → ZMod (2 ^ 64)),
+          (∀ (i : Fin r) (z : ZMod (2 ^ 64)), (ProvenHashes.uniformProb fun k => d (j i) k = z) ≤ 1 / 2 ^ 32) →
+            ∀ (b : Fin r → ZMod (2 ^ 64)),
+              (ProvenHashes.uniformProb fun k =>
+                  ((T.map ⇑(Int.castRingHom (ZMod (2 ^ 64)))).mulVec fun i => d i (k i)) = b) ≤
+                ↑(ProvenHashes.Halftime.weight (T.submatrix id ⇑j).det) * (1 / 2 ^ 32) ^ r
+'ProvenHashes.Halftime.combine_small_weight_bound' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.row_atom_bound : ∀ {N r : ℕ} {K : Type u_1} [inst : Fintype K] [Nonempty K]
+  (T : Matrix (Fin r) (Fin N) ℤ) (row : Fin r) (a : Fin N),
+  (T row a ≠ 0 → ¬32 ∣ T row a) →
+    ∀ (d : Fin N → K → ZMod (2 ^ 64)),
+      (∀ (z : ZMod (2 ^ 64)), (ProvenHashes.uniformProb fun k => d a k = z) ≤ 1 / 2 ^ 32) →
+        ∀ (b : ZMod (2 ^ 64)),
+          (ProvenHashes.uniformProb fun k => ProvenHashes.Halftime.combine T d k row = b) ≤
+            ↑(ProvenHashes.Halftime.weight (T row a)) / 2 ^ 32
+'ProvenHashes.Halftime.row_atom_bound' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.pair_atom_bound : ∀ {N r : ℕ} {K : Type u_1} [inst : Fintype K] [Nonempty K]
+  (T : Matrix (Fin r) (Fin N) ℤ) (row row' : Fin r) (a b : Fin N),
+  a ≠ b →
+    (ProvenHashes.Halftime.det2 T row row' a b ≠ 0 → ¬32 ∣ ProvenHashes.Halftime.det2 T row row' a b) →
+      ∀ (d : Fin N → K → ZMod (2 ^ 64)),
+        (∀ (z : ZMod (2 ^ 64)), (ProvenHashes.uniformProb fun k => d a k = z) ≤ 1 / 2 ^ 32) →
+          (∀ (z : ZMod (2 ^ 64)), (ProvenHashes.uniformProb fun k => d b k = z) ≤ 1 / 2 ^ 32) →
+            ∀ (u v : ZMod (2 ^ 64)),
+              (ProvenHashes.uniformProb fun k =>
+                  ProvenHashes.Halftime.combine T d k row = u ∧ ProvenHashes.Halftime.combine T d k row' = v) ≤
+                ↑(ProvenHashes.Halftime.weight (ProvenHashes.Halftime.det2 T row row' a b)) * (1 / 2 ^ 32) ^ 2
+'ProvenHashes.Halftime.pair_atom_bound' depends on axioms: [propext, Classical.choice, Quot.sound]
+ProvenHashes.Halftime.T2_small_entries : ∀ (r : Fin 2) (a : Fin 7),
+  ProvenHashes.Halftime.T2 r a ≠ 0 → ¬32 ∣ ProvenHashes.Halftime.T2 r a
+'ProvenHashes.Halftime.T2_small_entries' depends on axioms: [propext, Quot.sound]
+ProvenHashes.Halftime.T3_small_entries : ∀ (r : Fin 3) (a : Fin 9),
+  ProvenHashes.Halftime.T3 r a ≠ 0 → ¬32 ∣ ProvenHashes.Halftime.T3 r a
+'ProvenHashes.Halftime.T3_small_entries' depends on axioms: [propext, Quot.sound]
+ProvenHashes.Halftime.T3_small_pairs : ∀ (r s : Fin 3) (a b : Fin 9),
+  ProvenHashes.Halftime.det2 ProvenHashes.Halftime.T3 r s a b ≠ 0 →
+    ¬32 ∣ ProvenHashes.Halftime.det2 ProvenHashes.Halftime.T3 r s a b
+'ProvenHashes.Halftime.T3_small_pairs' depends on axioms: [propext, Quot.sound]
+ProvenHashes.Halftime.T2_distinct_coefficients : ∀ (a b : Fin 7),
+  a ≠ b → ProvenHashes.Halftime.singleton2 0 a b + ProvenHashes.Halftime.singleton2 1 a b ≤ 5
+'ProvenHashes.Halftime.T2_distinct_coefficients' depends on axioms: [propext, Quot.sound]
+ProvenHashes.Halftime.T3_distinct_coefficients : ∀ (a b c : Fin 9),
+  a ≠ b →
+    a ≠ c →
+      b ≠ c →
+        ProvenHashes.Halftime.singleton3 0 a b c + ProvenHashes.Halftime.singleton3 1 a b c +
+              ProvenHashes.Halftime.singleton3 2 a b c ≤
+            6 ∧
+          ProvenHashes.Halftime.pair3 0 1 a b c + ProvenHashes.Halftime.pair3 0 2 a b c +
+              ProvenHashes.Halftime.pair3 1 2 a b c ≤
+            9
+'ProvenHashes.Halftime.T3_distinct_coefficients' depends on axioms: [propext, Quot.sound]
+@ProvenHashes.Halftime.T2_subset_bounds : ∀ {K : Type u_1} [inst : Fintype K] [Nonempty K]
+  (d : Fin 7 → K → ZMod (2 ^ 64)) (j : Fin 2 ↪ Fin 7),
+  (∀ (i : Fin 2) (z : ZMod (2 ^ 64)), (ProvenHashes.uniformProb fun k => d (j i) k = z) ≤ 1 / 2 ^ 32) →
+    ∀ (b : Fin 2 → ZMod (2 ^ 64)),
+      ((ProvenHashes.uniformProb fun k => ProvenHashes.Halftime.combine ProvenHashes.Halftime.T2 d k 0 = b 0) +
+            ProvenHashes.uniformProb fun k => ProvenHashes.Halftime.combine ProvenHashes.Halftime.T2 d k 1 = b 1) ≤
+          5 / 2 ^ 32 ∧
+        (ProvenHashes.uniformProb fun k =>
+            ProvenHashes.Halftime.combine ProvenHashes.Halftime.T2 d k 0 = b 0 ∧
+              ProvenHashes.Halftime.combine ProvenHashes.Halftime.T2 d k 1 = b 1) ≤
+          4 / 2 ^ 64
+'ProvenHashes.Halftime.T2_subset_bounds' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.T3_subset_bounds : ∀ {K : Type u_1} [inst : Fintype K] [Nonempty K]
+  (d : Fin 9 → K → ZMod (2 ^ 64)) (j : Fin 3 ↪ Fin 9),
+  (∀ (i : Fin 3) (z : ZMod (2 ^ 64)), (ProvenHashes.uniformProb fun k => d (j i) k = z) ≤ 1 / 2 ^ 32) →
+    ∀ (b : Fin 3 → ZMod (2 ^ 64)),
+      (((ProvenHashes.uniformProb fun k => ProvenHashes.Halftime.combine ProvenHashes.Halftime.T3 d k 0 = b 0) +
+              ProvenHashes.uniformProb fun k => ProvenHashes.Halftime.combine ProvenHashes.Halftime.T3 d k 1 = b 1) +
+            ProvenHashes.uniformProb fun k => ProvenHashes.Halftime.combine ProvenHashes.Halftime.T3 d k 2 = b 2) ≤
+          6 / 2 ^ 32 ∧
+        (((ProvenHashes.uniformProb fun k =>
+                  ProvenHashes.Halftime.combine ProvenHashes.Halftime.T3 d k 0 = b 0 ∧
+                    ProvenHashes.Halftime.combine ProvenHashes.Halftime.T3 d k 1 = b 1) +
+                ProvenHashes.uniformProb fun k =>
+                  ProvenHashes.Halftime.combine ProvenHashes.Halftime.T3 d k 0 = b 0 ∧
+                    ProvenHashes.Halftime.combine ProvenHashes.Halftime.T3 d k 2 = b 2) +
+              ProvenHashes.uniformProb fun k =>
+                ProvenHashes.Halftime.combine ProvenHashes.Halftime.T3 d k 1 = b 1 ∧
+                  ProvenHashes.Halftime.combine ProvenHashes.Halftime.T3 d k 2 = b 2) ≤
+            9 / 2 ^ 64 ∧
+          (ProvenHashes.uniformProb fun k =>
+              ProvenHashes.Halftime.combine ProvenHashes.Halftime.T3 d k 0 = b 0 ∧
+                ProvenHashes.Halftime.combine ProvenHashes.Halftime.T3 d k 1 = b 1 ∧
+                  ProvenHashes.Halftime.combine ProvenHashes.Halftime.T3 d k 2 = b 2) ≤
+            4 / 2 ^ 96
+'ProvenHashes.Halftime.T3_subset_bounds' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.uniformProb_inter_conditional : ∀ {K : Type u_1} {J : Type u_2} [inst : Fintype K]
+  [inst_1 : Fintype J] (E : K → Prop) (F : K → J → Prop) (a : ℚ≥0),
+  (∀ (k : K), E k → ProvenHashes.uniformProb (F k) ≤ a) →
+    (ProvenHashes.uniformProb fun k => E k.1 ∧ F k.1 k.2) ≤ ProvenHashes.uniformProb E * a
+'ProvenHashes.Halftime.uniformProb_inter_conditional' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.uniformProb_inter_update : ∀ {I : Type u_1} {V : Type u_2} {O : Type u_3} [inst : Fintype I]
+  [inst_1 : DecidableEq I] [inst_2 : Fintype V] [Nonempty V] (E : (I → V) → Prop) (f : (I → V) → O) (i : I),
+  (∀ (k : I → V) (v : V), E (Function.update k i v) ↔ E k) →
+    (∀ (k : I → V), Function.Injective fun v => f (Function.update k i v)) →
+      ∀ (t : O),
+        (ProvenHashes.uniformProb fun k => E k ∧ f k = t) ≤ ProvenHashes.uniformProb E * (1 / ↑(Fintype.card V))
+'ProvenHashes.Halftime.uniformProb_inter_update' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.triangular_adu : ∀ {I : Type u_1} {V : Type u_2} {O : Type u_3} [inst : Fintype I]
+  [inst_1 : DecidableEq I] [inst_2 : Fintype V] [Nonempty V] (r : ℕ) (f : Fin r → (I → V) → O) (pick : Fin r → I),
+  (∀ (j : Fin r) (k : I → V), Function.Injective fun v => f j (Function.update k (pick j) v)) →
+    (∀ (i j : Fin r), i < j → ∀ (k : I → V) (v : V), f i (Function.update k (pick j) v) = f i k) →
+      ∀ (b : Fin r → O), (ProvenHashes.uniformProb fun k => ∀ (j : Fin r), f j k = b j) ≤ (1 / ↑(Fintype.card V)) ^ r
+'ProvenHashes.Halftime.triangular_adu' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.update_comp_embedding : ∀ {I : Type u_1} {J : Type u_2} {V : Type u_3} [inst : DecidableEq I]
+  [inst_1 : DecidableEq J] (e : I ↪ J) (k : J → V) (i : I) (v : V),
+  (fun j => Function.update k (e i) v (e j)) = Function.update (fun j => k (e j)) i v
+'ProvenHashes.Halftime.update_comp_embedding' depends on axioms: [propext, Quot.sound]
+@ProvenHashes.Halftime.nh_difference_update_injective : ∀ {q n : ℕ} [NeZero q] (x y k : Fin n × Bool → ZMod q)
+  (i : Fin n) (b : Bool),
+  x (i, b) ≠ y (i, b) →
+    Function.Injective fun v =>
+      ProvenHashes.Halftime.nh x (Function.update k (i, !b) v) -
+        ProvenHashes.Halftime.nh y (Function.update k (i, !b) v)
+'ProvenHashes.Halftime.nh_difference_update_injective' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.toeplitz_update_injective : ∀ {n r : ℕ} (x y : Fin n × Bool → ZMod (2 ^ 32)) (p : Fin n)
+  (b : Bool),
+  x (p, b) ≠ y (p, b) →
+    ∀ (j : Fin r) (key : Fin (n + r - 1) × Bool → ZMod (2 ^ 32)),
+      Function.Injective fun v =>
+        ProvenHashes.Halftime.toeplitzNH x (Function.update key ((ProvenHashes.Halftime.shiftEmbedding j) (p, !b)) v)
+            j -
+          ProvenHashes.Halftime.toeplitzNH y (Function.update key ((ProvenHashes.Halftime.shiftEmbedding j) (p, !b)) v)
+            j
+'ProvenHashes.Halftime.toeplitz_update_injective' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.toeplitz_earlier_ignores_update : ∀ {n r : ℕ} (x y : Fin n × Bool → ZMod (2 ^ 32)) (p : Fin n),
+  (∀ (a : Fin n), p < a → ∀ (b : Bool), x (a, b) = y (a, b)) →
+    ∀ (i j : Fin r),
+      i < j →
+        ∀ (b : Bool) (key : Fin (n + r - 1) × Bool → ZMod (2 ^ 32)) (v : ZMod (2 ^ 32)),
+          ProvenHashes.Halftime.toeplitzNH x (Function.update key ((ProvenHashes.Halftime.shiftEmbedding j) (p, b)) v)
+                i -
+              ProvenHashes.Halftime.toeplitzNH y
+                (Function.update key ((ProvenHashes.Halftime.shiftEmbedding j) (p, b)) v) i =
+            ProvenHashes.Halftime.toeplitzNH x key i - ProvenHashes.Halftime.toeplitzNH y key i
+'ProvenHashes.Halftime.toeplitz_earlier_ignores_update' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.toeplitzNH_adu : ∀ {n r : ℕ} (x y : Fin n × Bool → ZMod (2 ^ 32)),
+  x ≠ y →
+    ∀ (t : Fin r → ZMod (2 ^ 64)),
+      (ProvenHashes.uniformProb fun key =>
+          ProvenHashes.Halftime.toeplitzNH x key - ProvenHashes.Halftime.toeplitzNH y key = t) ≤
+        (1 / 2 ^ 32) ^ r
+'ProvenHashes.Halftime.toeplitzNH_adu' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.splitWord_injective : ∀ {q : ℕ} [NeZero q], Function.Injective ProvenHashes.Halftime.splitWord
+'ProvenHashes.Halftime.splitWord_injective' depends on axioms: [propext, Quot.sound]
+ProvenHashes.Halftime.halves32_injective : Function.Injective ProvenHashes.Halftime.halves32
+'ProvenHashes.Halftime.halves32_injective' depends on axioms: [propext, Quot.sound]
+@ProvenHashes.Halftime.packWords_injective : ∀ {m : ℕ}, Function.Injective ProvenHashes.Halftime.packWords
+'ProvenHashes.Halftime.packWords_injective' depends on axioms: [propext, Quot.sound]
+@ProvenHashes.Halftime.packTree_injective : ∀ {m : ℕ}, Function.Injective ProvenHashes.Halftime.packTree
+'ProvenHashes.Halftime.packTree_injective' depends on axioms: [propext, Quot.sound]
+@ProvenHashes.Halftime.leafValue_map : ∀ {X : Type u_1} {Y : Type u_2} {f h : ℕ} (g : X → Y)
+  (s : ProvenHashes.Halftime.TreeShape f h) (x : ProvenHashes.Halftime.TreeInput X s)
+  (p : ProvenHashes.Halftime.LeafPath s),
+  ProvenHashes.Halftime.leafValue s (ProvenHashes.Halftime.mapLeaves g s x) p =
+    g (ProvenHashes.Halftime.leafValue s x p)
+'ProvenHashes.Halftime.leafValue_map' does not depend on any axioms
+@ProvenHashes.Halftime.exists_differing_leaf : ∀ {X : Type u_1} {f h : ℕ} (s : ProvenHashes.Halftime.TreeShape f h)
+  (x y : ProvenHashes.Halftime.TreeInput X s),
+  x ≠ y → ∃ p, ProvenHashes.Halftime.leafValue s x p ≠ ProvenHashes.Halftime.leafValue s y p
+'ProvenHashes.Halftime.exists_differing_leaf' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.forestCore_component_bound : ∀ {X : Type u_1} {I : Type u_2} {K : Type u_3} {J : Type u_4}
+  [inst : Fintype K] [Nonempty K] [inst_2 : Fintype J] [Nonempty J] {N r n f h : ℕ}
+  (encode : X → Fin N → Fin n × Bool → ZMod (2 ^ 32)) (T : Matrix (Fin r) (Fin N) ℤ)
+  (g : Fin r → K → (Fin f → ZMod (2 ^ 64)) → ZMod (2 ^ 64)) (final : Fin r → J → (I → ZMod (2 ^ 64)) → ZMod (2 ^ 64)),
+  (∀ (row : Fin r) (x y : Fin f → ZMod (2 ^ 64)),
+      x ≠ y → (ProvenHashes.uniformProb fun k => g row k x = g row k y) ≤ 1 / 2 ^ 32) →
+    (∀ (row : Fin r) (x y : I → ZMod (2 ^ 64)),
+        x ≠ y →
+          ∀ (t : ZMod (2 ^ 64)), (ProvenHashes.uniformProb fun k => final row k x - final row k y = t) ≤ 1 / 2 ^ 32) →
+      ∀ (s : I → ProvenHashes.Halftime.TreeShape f h) (x y : (i : I) → ProvenHashes.Halftime.TreeInput X (s i))
+        (root : I) (p : ProvenHashes.Halftime.LeafPath (s root)) (key : Fin N → Fin n × Bool → ZMod (2 ^ 32))
+        (row : Fin r),
+        ProvenHashes.Halftime.ehc encode T (ProvenHashes.Halftime.leafValue (s root) (x root) p) key row ≠
+            ProvenHashes.Halftime.ehc encode T (ProvenHashes.Halftime.leafValue (s root) (y root) p) key row →
+          ∀ (t : ZMod (2 ^ 64)),
+            (ProvenHashes.uniformProb fun k =>
+                final row k.2
+                      (ProvenHashes.Halftime.forestHash (g row) s
+                        (fun i =>
+                          ProvenHashes.Halftime.mapLeaves (fun v => ProvenHashes.Halftime.ehc encode T v key row) (s i)
+                            (x i))
+                        k.1) -
+                    final row k.2
+                      (ProvenHashes.Halftime.forestHash (g row) s
+                        (fun i =>
+                          ProvenHashes.Halftime.mapLeaves (fun v => ProvenHashes.Halftime.ehc encode T v key row) (s i)
+                            (y i))
+                        k.1) =
+                  t) ≤
+              ↑(h + 1) * (1 / 2 ^ 32)
+'ProvenHashes.Halftime.forestCore_component_bound' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.ehc_difference_eq_combine : ∀ {X : Type u_1} {N r n : ℕ}
+  (encode : X → Fin N → Fin n × Bool → ZMod (2 ^ 32)) (T : Matrix (Fin r) (Fin N) ℤ) (x y : X)
+  (key : Fin N → Fin n × Bool → ZMod (2 ^ 32)),
+  ProvenHashes.Halftime.ehc encode T x key - ProvenHashes.Halftime.ehc encode T y key =
+    ProvenHashes.Halftime.combine T
+      (fun i k => ProvenHashes.Halftime.nh32 (encode x i) k - ProvenHashes.Halftime.nh32 (encode y i) k) key
+'ProvenHashes.Halftime.ehc_difference_eq_combine' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.forestCore_two_bound : ∀ {X : Type u_1} {I : Type u_2} {K : Type u_3} {J : Type u_4}
+  [inst : Fintype K] [Nonempty K] [inst_2 : Fintype J] [Nonempty J] {n f h : ℕ}
+  (encode : X → Fin 7 → Fin n × Bool → ZMod (2 ^ 32)),
+  (∀ (x y : X), x ≠ y → ∃ j, ∀ (i : Fin 2), encode x (j i) ≠ encode y (j i)) →
+    ∀ (g : Fin 2 → K → (Fin f → ZMod (2 ^ 64)) → ZMod (2 ^ 64))
+      (final : Fin 2 → J → (I → ZMod (2 ^ 64)) → ZMod (2 ^ 64)),
+      (∀ (row : Fin 2) (x y : Fin f → ZMod (2 ^ 64)),
+          x ≠ y → (ProvenHashes.uniformProb fun k => g row k x = g row k y) ≤ 1 / 2 ^ 32) →
+        (∀ (row : Fin 2) (x y : I → ZMod (2 ^ 64)),
+            x ≠ y →
+              ∀ (t : ZMod (2 ^ 64)),
+                (ProvenHashes.uniformProb fun k => final row k x - final row k y = t) ≤ 1 / 2 ^ 32) →
+          ∀ (s : I → ProvenHashes.Halftime.TreeShape f h) (x y : (i : I) → ProvenHashes.Halftime.TreeInput X (s i)),
+            x ≠ y →
+              ∀ (b : Fin 2 → ZMod (2 ^ 64)),
+                (ProvenHashes.uniformProb fun k =>
+                    ProvenHashes.Halftime.forestCore encode ProvenHashes.Halftime.T2 g final s x k -
+                        ProvenHashes.Halftime.forestCore encode ProvenHashes.Halftime.T2 g final s y k =
+                      b) ≤
+                  min 1 ((1 / 2 ^ 32) ^ 2 * (↑h + 2) ^ (2 - 1) * (↑h + 5))
+'ProvenHashes.Halftime.forestCore_two_bound' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.forestCore_three_bound : ∀ {X : Type u_1} {I : Type u_2} {K : Type u_3} {J : Type u_4}
+  [inst : Fintype K] [Nonempty K] [inst_2 : Fintype J] [Nonempty J] {n f h : ℕ}
+  (encode : X → Fin 9 → Fin n × Bool → ZMod (2 ^ 32)),
+  (∀ (x y : X), x ≠ y → ∃ j, ∀ (i : Fin 3), encode x (j i) ≠ encode y (j i)) →
+    ∀ (g : Fin 3 → K → (Fin f → ZMod (2 ^ 64)) → ZMod (2 ^ 64))
+      (final : Fin 3 → J → (I → ZMod (2 ^ 64)) → ZMod (2 ^ 64)),
+      (∀ (row : Fin 3) (x y : Fin f → ZMod (2 ^ 64)),
+          x ≠ y → (ProvenHashes.uniformProb fun k => g row k x = g row k y) ≤ 1 / 2 ^ 32) →
+        (∀ (row : Fin 3) (x y : I → ZMod (2 ^ 64)),
+            x ≠ y →
+              ∀ (t : ZMod (2 ^ 64)),
+                (ProvenHashes.uniformProb fun k => final row k x - final row k y = t) ≤ 1 / 2 ^ 32) →
+          ∀ (s : I → ProvenHashes.Halftime.TreeShape f h) (x y : (i : I) → ProvenHashes.Halftime.TreeInput X (s i)),
+            x ≠ y →
+              ∀ (b : Fin 3 → ZMod (2 ^ 64)),
+                (ProvenHashes.uniformProb fun k =>
+                    ProvenHashes.Halftime.forestCore encode ProvenHashes.Halftime.T3 g final s x k -
+                        ProvenHashes.Halftime.forestCore encode ProvenHashes.Halftime.T3 g final s y k =
+                      b) ≤
+                  min 1 ((1 / 2 ^ 32) ^ 3 * (↑h + 2) ^ (3 - 1) * (↑h + 5))
+'ProvenHashes.Halftime.forestCore_three_bound' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.halftimeCore_different_tail : ∀ {X : Type u_1} {I : Type u_2} {K : Type u_3} {J : Type u_4}
+  [inst : Fintype K] [Nonempty K] [inst_2 : Fintype J] [Nonempty J] {N r n f h l : ℕ}
+  (encode : X → Fin N → Fin n × Bool → ZMod (2 ^ 32)) (T : Matrix (Fin r) (Fin N) ℤ)
+  (g : Fin r → K → (Fin f → ZMod (2 ^ 64)) → ZMod (2 ^ 64)) (final : Fin r → J → (I → ZMod (2 ^ 64)) → ZMod (2 ^ 64))
+  (s : I → ProvenHashes.Halftime.TreeShape f h)
+  (x y : ((i : I) → ProvenHashes.Halftime.TreeInput X (s i)) × (Fin l × Bool → ZMod (2 ^ 32))),
+  x.2 ≠ y.2 →
+    ∀ (b : Fin r → ZMod (2 ^ 64)),
+      (ProvenHashes.uniformProb fun k =>
+          ProvenHashes.Halftime.halftimeCore encode T g final s x k -
+              ProvenHashes.Halftime.halftimeCore encode T g final s y k =
+            b) ≤
+        (1 / 2 ^ 32) ^ r
+'ProvenHashes.Halftime.halftimeCore_different_tail' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.halftimeCore_equal_tail : ∀ {X : Type u_1} {I : Type u_2} {K : Type u_3} {J : Type u_4}
+  [inst : Fintype K] [Nonempty K] [inst_2 : Fintype J] [Nonempty J] {N r n f h l : ℕ}
+  (encode : X → Fin N → Fin n × Bool → ZMod (2 ^ 32)) (T : Matrix (Fin r) (Fin N) ℤ)
+  (g : Fin r → K → (Fin f → ZMod (2 ^ 64)) → ZMod (2 ^ 64)) (final : Fin r → J → (I → ZMod (2 ^ 64)) → ZMod (2 ^ 64))
+  (s : I → ProvenHashes.Halftime.TreeShape f h)
+  (x y : ((i : I) → ProvenHashes.Halftime.TreeInput X (s i)) × (Fin l × Bool → ZMod (2 ^ 32))),
+  x.2 = y.2 →
+    ∀ (b : Fin r → ZMod (2 ^ 64)),
+      (ProvenHashes.uniformProb fun k =>
+          ProvenHashes.Halftime.halftimeCore encode T g final s x k -
+              ProvenHashes.Halftime.halftimeCore encode T g final s y k =
+            b) =
+        ProvenHashes.uniformProb fun k =>
+          ProvenHashes.Halftime.forestCore encode T g final s x.1 k -
+              ProvenHashes.Halftime.forestCore encode T g final s y.1 k =
+            b
+'ProvenHashes.Halftime.halftimeCore_equal_tail' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.halftimeCore_two_bound : ∀ {X : Type u_1} {I : Type u_2} {K : Type u_3} {J : Type u_4}
+  [inst : Fintype K] [Nonempty K] [inst_2 : Fintype J] [Nonempty J] {n f h l : ℕ}
+  (encode : X → Fin 7 → Fin n × Bool → ZMod (2 ^ 32)),
+  (∀ (x y : X), x ≠ y → ∃ j, ∀ (i : Fin 2), encode x (j i) ≠ encode y (j i)) →
+    ∀ (g : Fin 2 → K → (Fin f → ZMod (2 ^ 64)) → ZMod (2 ^ 64))
+      (final : Fin 2 → J → (I → ZMod (2 ^ 64)) → ZMod (2 ^ 64)),
+      (∀ (row : Fin 2) (x y : Fin f → ZMod (2 ^ 64)),
+          x ≠ y → (ProvenHashes.uniformProb fun k => g row k x = g row k y) ≤ 1 / 2 ^ 32) →
+        (∀ (row : Fin 2) (x y : I → ZMod (2 ^ 64)),
+            x ≠ y →
+              ∀ (t : ZMod (2 ^ 64)),
+                (ProvenHashes.uniformProb fun k => final row k x - final row k y = t) ≤ 1 / 2 ^ 32) →
+          ∀ (s : I → ProvenHashes.Halftime.TreeShape f h)
+            (x y : ((i : I) → ProvenHashes.Halftime.TreeInput X (s i)) × (Fin l × Bool → ZMod (2 ^ 32))),
+            x ≠ y →
+              ∀ (b : Fin 2 → ZMod (2 ^ 64)),
+                (ProvenHashes.uniformProb fun k =>
+                    ProvenHashes.Halftime.halftimeCore encode ProvenHashes.Halftime.T2 g final s x k -
+                        ProvenHashes.Halftime.halftimeCore encode ProvenHashes.Halftime.T2 g final s y k =
+                      b) ≤
+                  min 1 ((1 / 2 ^ 32) ^ 2 * (↑h + 2) ^ (2 - 1) * (↑h + 1 + 2 ^ 2))
+'ProvenHashes.Halftime.halftimeCore_two_bound' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.halftimeCore_three_bound : ∀ {X : Type u_1} {I : Type u_2} {K : Type u_3} {J : Type u_4}
+  [inst : Fintype K] [Nonempty K] [inst_2 : Fintype J] [Nonempty J] {n f h l : ℕ}
+  (encode : X → Fin 9 → Fin n × Bool → ZMod (2 ^ 32)),
+  (∀ (x y : X), x ≠ y → ∃ j, ∀ (i : Fin 3), encode x (j i) ≠ encode y (j i)) →
+    ∀ (g : Fin 3 → K → (Fin f → ZMod (2 ^ 64)) → ZMod (2 ^ 64))
+      (final : Fin 3 → J → (I → ZMod (2 ^ 64)) → ZMod (2 ^ 64)),
+      (∀ (row : Fin 3) (x y : Fin f → ZMod (2 ^ 64)),
+          x ≠ y → (ProvenHashes.uniformProb fun k => g row k x = g row k y) ≤ 1 / 2 ^ 32) →
+        (∀ (row : Fin 3) (x y : I → ZMod (2 ^ 64)),
+            x ≠ y →
+              ∀ (t : ZMod (2 ^ 64)),
+                (ProvenHashes.uniformProb fun k => final row k x - final row k y = t) ≤ 1 / 2 ^ 32) →
+          ∀ (s : I → ProvenHashes.Halftime.TreeShape f h)
+            (x y : ((i : I) → ProvenHashes.Halftime.TreeInput X (s i)) × (Fin l × Bool → ZMod (2 ^ 32))),
+            x ≠ y →
+              ∀ (b : Fin 3 → ZMod (2 ^ 64)),
+                (ProvenHashes.uniformProb fun k =>
+                    ProvenHashes.Halftime.halftimeCore encode ProvenHashes.Halftime.T3 g final s x k -
+                        ProvenHashes.Halftime.halftimeCore encode ProvenHashes.Halftime.T3 g final s y k =
+                      b) ≤
+                  min 1 ((1 / 2 ^ 32) ^ 3 * (↑h + 2) ^ (3 - 1) * (↑h + 1 + 2 ^ 2))
+'ProvenHashes.Halftime.halftimeCore_three_bound' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.nhNode_au : ∀ {f nt : ℕ}
+  (pack : (Fin f → ZMod (2 ^ 64)) → (Fin nt × Bool → ZMod (2 ^ 32)) × ZMod (2 ^ 32 * 2 ^ 32)),
+  Function.Injective pack →
+    ∀ (x y : Fin f → ZMod (2 ^ 64)),
+      x ≠ y →
+        (ProvenHashes.uniformProb fun key =>
+            ProvenHashes.Halftime.nhNode pack key x = ProvenHashes.Halftime.nhNode pack key y) ≤
+          1 / 2 ^ 32
+'ProvenHashes.Halftime.nhNode_au' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.halftimeCore_two_nh_bound : ∀ {X : Type u_1} {I : Type u_2} {n nt nf f h l : ℕ}
+  (encode : X → Fin 7 → Fin n × Bool → ZMod (2 ^ 32)),
+  (∀ (x y : X), x ≠ y → ∃ j, ∀ (i : Fin 2), encode x (j i) ≠ encode y (j i)) →
+    ∀ (treePack : (Fin f → ZMod (2 ^ 64)) → (Fin nt × Bool → ZMod (2 ^ 32)) × ZMod (2 ^ 32 * 2 ^ 32)),
+      Function.Injective treePack →
+        ∀ (finalPack : (I → ZMod (2 ^ 64)) → Fin nf × Bool → ZMod (2 ^ 32)),
+          Function.Injective finalPack →
+            ∀ (s : I → ProvenHashes.Halftime.TreeShape f h)
+              (x y : ((i : I) → ProvenHashes.Halftime.TreeInput X (s i)) × (Fin l × Bool → ZMod (2 ^ 32))),
+              x ≠ y →
+                ∀ (b : Fin 2 → ZMod (2 ^ 64)),
+                  (ProvenHashes.uniformProb fun k =>
+                      ProvenHashes.Halftime.halftimeCore encode ProvenHashes.Halftime.T2
+                            (fun x => ProvenHashes.Halftime.nhNode treePack)
+                            (fun x key v => ProvenHashes.Halftime.nh32 (finalPack v) key) s x k -
+                          ProvenHashes.Halftime.halftimeCore encode ProvenHashes.Halftime.T2
+                            (fun x => ProvenHashes.Halftime.nhNode treePack)
+                            (fun x key v => ProvenHashes.Halftime.nh32 (finalPack v) key) s y k =
+                        b) ≤
+                    min 1 ((1 / 2 ^ 32) ^ 2 * (↑h + 2) ^ (2 - 1) * (↑h + 1 + 2 ^ 2))
+'ProvenHashes.Halftime.halftimeCore_two_nh_bound' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.halftimeCore_three_nh_bound : ∀ {X : Type u_1} {I : Type u_2} {n nt nf f h l : ℕ}
+  (encode : X → Fin 9 → Fin n × Bool → ZMod (2 ^ 32)),
+  (∀ (x y : X), x ≠ y → ∃ j, ∀ (i : Fin 3), encode x (j i) ≠ encode y (j i)) →
+    ∀ (treePack : (Fin f → ZMod (2 ^ 64)) → (Fin nt × Bool → ZMod (2 ^ 32)) × ZMod (2 ^ 32 * 2 ^ 32)),
+      Function.Injective treePack →
+        ∀ (finalPack : (I → ZMod (2 ^ 64)) → Fin nf × Bool → ZMod (2 ^ 32)),
+          Function.Injective finalPack →
+            ∀ (s : I → ProvenHashes.Halftime.TreeShape f h)
+              (x y : ((i : I) → ProvenHashes.Halftime.TreeInput X (s i)) × (Fin l × Bool → ZMod (2 ^ 32))),
+              x ≠ y →
+                ∀ (b : Fin 3 → ZMod (2 ^ 64)),
+                  (ProvenHashes.uniformProb fun k =>
+                      ProvenHashes.Halftime.halftimeCore encode ProvenHashes.Halftime.T3
+                            (fun x => ProvenHashes.Halftime.nhNode treePack)
+                            (fun x key v => ProvenHashes.Halftime.nh32 (finalPack v) key) s x k -
+                          ProvenHashes.Halftime.halftimeCore encode ProvenHashes.Halftime.T3
+                            (fun x => ProvenHashes.Halftime.nhNode treePack)
+                            (fun x key v => ProvenHashes.Halftime.nh32 (finalPack v) key) s y k =
+                        b) ≤
+                    min 1 ((1 / 2 ^ 32) ^ 3 * (↑h + 2) ^ (3 - 1) * (↑h + 1 + 2 ^ 2))
+'ProvenHashes.Halftime.halftimeCore_three_nh_bound' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.halftime_6804 : ∀ {X : Type u_1} {I : Type u_2} {n nt nf f l : ℕ}
+  (encode : X → Fin 9 → Fin n × Bool → ZMod (2 ^ 32)),
+  (∀ (x y : X), x ≠ y → ∃ j, ∀ (i : Fin 3), encode x (j i) ≠ encode y (j i)) →
+    ∀ (treePack : (Fin f → ZMod (2 ^ 64)) → (Fin nt × Bool → ZMod (2 ^ 32)) × ZMod (2 ^ 32 * 2 ^ 32)),
+      Function.Injective treePack →
+        ∀ (finalPack : (I → ZMod (2 ^ 64)) → Fin nf × Bool → ZMod (2 ^ 32)),
+          Function.Injective finalPack →
+            ∀ (s : I → ProvenHashes.Halftime.TreeShape f 16)
+              (x y : ((i : I) → ProvenHashes.Halftime.TreeInput X (s i)) × (Fin l × Bool → ZMod (2 ^ 32))),
+              x ≠ y →
+                ∀ (b : Fin 3 → ZMod (2 ^ 64)),
+                  (ProvenHashes.uniformProb fun k =>
+                      ProvenHashes.Halftime.halftimeCore encode ProvenHashes.Halftime.T3
+                            (fun x => ProvenHashes.Halftime.nhNode treePack)
+                            (fun x key v => ProvenHashes.Halftime.nh32 (finalPack v) key) s x k -
+                          ProvenHashes.Halftime.halftimeCore encode ProvenHashes.Halftime.T3
+                            (fun x => ProvenHashes.Halftime.nhNode treePack)
+                            (fun x key v => ProvenHashes.Halftime.nh32 (finalPack v) key) s y k =
+                        b) ≤
+                    6804 / 2 ^ 96
+'ProvenHashes.Halftime.halftime_6804' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.scalar_halftime_two_bound : ∀ {X : Type u_1} {n nt roots h l : ℕ}
+  (encode : X → Fin 7 → Fin n × Bool → ZMod (2 ^ 32)),
+  (∀ (x y : X), x ≠ y → ∃ j, ∀ (i : Fin 2), encode x (j i) ≠ encode y (j i)) →
+    ∀ (s : Fin roots → ProvenHashes.Halftime.TreeShape (nt + 1) h)
+      (x y : ((i : Fin roots) → ProvenHashes.Halftime.TreeInput X (s i)) × (Fin l × Bool → ZMod (2 ^ 32))),
+      x ≠ y →
+        ∀ (b : Fin 2 → ZMod (2 ^ 64)),
+          (ProvenHashes.uniformProb fun k =>
+              ProvenHashes.Halftime.halftimeCore encode ProvenHashes.Halftime.T2
+                    (fun x => ProvenHashes.Halftime.nhNode ProvenHashes.Halftime.packTree)
+                    (fun x key v => ProvenHashes.Halftime.nh32 (ProvenHashes.Halftime.packWords v) key) s x k -
+                  ProvenHashes.Halftime.halftimeCore encode ProvenHashes.Halftime.T2
+                    (fun x => ProvenHashes.Halftime.nhNode ProvenHashes.Halftime.packTree)
+                    (fun x key v => ProvenHashes.Halftime.nh32 (ProvenHashes.Halftime.packWords v) key) s y k =
+                b) ≤
+            min 1 ((1 / 2 ^ 32) ^ 2 * (↑h + 2) ^ (2 - 1) * (↑h + 1 + 2 ^ 2))
+'ProvenHashes.Halftime.scalar_halftime_two_bound' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.scalar_halftime_three_bound : ∀ {X : Type u_1} {n nt roots h l : ℕ}
+  (encode : X → Fin 9 → Fin n × Bool → ZMod (2 ^ 32)),
+  (∀ (x y : X), x ≠ y → ∃ j, ∀ (i : Fin 3), encode x (j i) ≠ encode y (j i)) →
+    ∀ (s : Fin roots → ProvenHashes.Halftime.TreeShape (nt + 1) h)
+      (x y : ((i : Fin roots) → ProvenHashes.Halftime.TreeInput X (s i)) × (Fin l × Bool → ZMod (2 ^ 32))),
+      x ≠ y →
+        ∀ (b : Fin 3 → ZMod (2 ^ 64)),
+          (ProvenHashes.uniformProb fun k =>
+              ProvenHashes.Halftime.halftimeCore encode ProvenHashes.Halftime.T3
+                    (fun x => ProvenHashes.Halftime.nhNode ProvenHashes.Halftime.packTree)
+                    (fun x key v => ProvenHashes.Halftime.nh32 (ProvenHashes.Halftime.packWords v) key) s x k -
+                  ProvenHashes.Halftime.halftimeCore encode ProvenHashes.Halftime.T3
+                    (fun x => ProvenHashes.Halftime.nhNode ProvenHashes.Halftime.packTree)
+                    (fun x key v => ProvenHashes.Halftime.nh32 (ProvenHashes.Halftime.packWords v) key) s y k =
+                b) ≤
+            min 1 ((1 / 2 ^ 32) ^ 3 * (↑h + 2) ^ (3 - 1) * (↑h + 1 + 2 ^ 2))
+'ProvenHashes.Halftime.scalar_halftime_three_bound' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.scalar_halftime_6804 : ∀ {X : Type u_1} {n nt roots l : ℕ}
+  (encode : X → Fin 9 → Fin n × Bool → ZMod (2 ^ 32)),
+  (∀ (x y : X), x ≠ y → ∃ j, ∀ (i : Fin 3), encode x (j i) ≠ encode y (j i)) →
+    ∀ (s : Fin roots → ProvenHashes.Halftime.TreeShape (nt + 1) 16)
+      (x y : ((i : Fin roots) → ProvenHashes.Halftime.TreeInput X (s i)) × (Fin l × Bool → ZMod (2 ^ 32))),
+      x ≠ y →
+        ∀ (b : Fin 3 → ZMod (2 ^ 64)),
+          (ProvenHashes.uniformProb fun k =>
+              ProvenHashes.Halftime.halftimeCore encode ProvenHashes.Halftime.T3
+                    (fun x => ProvenHashes.Halftime.nhNode ProvenHashes.Halftime.packTree)
+                    (fun x key v => ProvenHashes.Halftime.nh32 (ProvenHashes.Halftime.packWords v) key) s x k -
+                  ProvenHashes.Halftime.halftimeCore encode ProvenHashes.Halftime.T3
+                    (fun x => ProvenHashes.Halftime.nhNode ProvenHashes.Halftime.packTree)
+                    (fun x key v => ProvenHashes.Halftime.nh32 (ProvenHashes.Halftime.packWords v) key) s y k =
+                b) ≤
+            6804 / 2 ^ 96
+'ProvenHashes.Halftime.scalar_halftime_6804' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.uniformProb_complement_add : ∀ {K : Type u_1} [inst : Fintype K] [Nonempty K] (E : K → Prop),
+  (ProvenHashes.uniformProb fun k => ¬E k) + ProvenHashes.uniformProb E = 1
+'ProvenHashes.Halftime.uniformProb_complement_add' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.wrapper_conditioning : ∀ {K : Type u_1} {I : Type u_2} {A : Type u_3} {G : Type u_4}
+  [inst : Fintype K] [Nonempty K] [inst_2 : Fintype I] [inst_3 : Fintype A] [inst_4 : DecidableEq I]
+  [inst_5 : DecidableEq A] [inst_6 : AddCommGroup G] [inst_7 : Fintype G] (x y : K → I → A) (l l' : K → G),
+  (ProvenHashes.uniformProb fun k =>
+      ProvenHashes.Halftime.wrappedHash x l k = ProvenHashes.Halftime.wrappedHash y l' k) =
+    (1 / ↑(Fintype.card G) * ProvenHashes.uniformProb fun k => x k ≠ y k) +
+      ProvenHashes.uniformProb fun k => x k = y k ∧ l k = l' k
+'ProvenHashes.Halftime.wrapper_conditioning' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.reciprocal_card_le_one : ∀ {G : Type u_1} [inst : Fintype G] [Nonempty G],
+  1 / ↑(Fintype.card G) ≤ 1
+'ProvenHashes.Halftime.reciprocal_card_le_one' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.wrapper_equal_length : ∀ {K : Type u_1} {I : Type u_2} {A : Type u_3} {G : Type u_4}
+  [inst : Fintype K] [Nonempty K] [inst_2 : Fintype I] [inst_3 : Fintype A] [inst_4 : DecidableEq I]
+  [inst_5 : DecidableEq A] [inst_6 : AddCommGroup G] [inst_7 : Fintype G] (x y : K → I → A) (l : K → G),
+  (ProvenHashes.uniformProb fun k =>
+      ProvenHashes.Halftime.wrappedHash x l k = ProvenHashes.Halftime.wrappedHash y l k) =
+    1 / ↑(Fintype.card G) + (1 - 1 / ↑(Fintype.card G)) * ProvenHashes.uniformProb fun k => x k = y k
+'ProvenHashes.Halftime.wrapper_equal_length' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.wrapper_unequal_length : ∀ {K : Type u_1} {I : Type u_2} {A : Type u_3} {G : Type u_4}
+  [inst : Fintype K] [Nonempty K] [inst_2 : Fintype I] [inst_3 : Fintype A] [inst_4 : DecidableEq I]
+  [inst_5 : DecidableEq A] [inst_6 : AddCommGroup G] [inst_7 : Fintype G] (x y : K → I → A) (l l' : K → G),
+  (ProvenHashes.uniformProb fun k => l k = l' k) ≤ 1 / ↑(Fintype.card G) →
+    (ProvenHashes.uniformProb fun k =>
+        ProvenHashes.Halftime.wrappedHash x l k = ProvenHashes.Halftime.wrappedHash y l' k) ≤
+      1 / ↑(Fintype.card G) + (1 - 1 / ↑(Fintype.card G)) * (1 / ↑(Fintype.card G))
+'ProvenHashes.Halftime.wrapper_unequal_length' depends on axioms: [propext, Classical.choice, Quot.sound]
+ProvenHashes.Halftime.flat_length_address : ∀ (j : Fin 8) (a : Fin 256),
+  ↑(ProvenHashes.Halftime.flatTableIndex (Sum.inl (j, a))) = 256 * ↑j + ↑a
+'ProvenHashes.Halftime.flat_length_address' depends on axioms: [propext, Classical.choice, Quot.sound]
+ProvenHashes.Halftime.flat_output_address : ∀ (j : Fin 16) (a : Fin 256),
+  ↑(ProvenHashes.Halftime.flatTableIndex (Sum.inr (j, a))) = 2048 + 256 * ↑j + ↑a
+'ProvenHashes.Halftime.flat_output_address' depends on axioms: [propext, Classical.choice, Quot.sound]
+ProvenHashes.Halftime.flatStyleWrapper_formula : ∀ (core : ProvenHashes.Halftime.LowerTableKey → Fin 16 → Fin 256)
+  (lengthBytes : Fin 8 → Fin 256) (key : Fin 6144 → ProvenHashes.XorWord 64),
+  ProvenHashes.Halftime.flatStyleWrapper core lengthBytes key =
+    ∑ j, key (ProvenHashes.Halftime.flatTableIndex (Sum.inl (j, lengthBytes j))) +
+      ∑ j,
+        key
+          (ProvenHashes.Halftime.flatTableIndex
+            (Sum.inr (j, core ((ProvenHashes.Halftime.flatKeyEquiv (ProvenHashes.XorWord 64)) key).1 j)))
+'ProvenHashes.Halftime.flatStyleWrapper_formula' depends on axioms: [propext, Classical.choice, Quot.sound]
+ProvenHashes.Halftime.flat_wrapper_equal_length : ∀ (x y : ProvenHashes.Halftime.LowerTableKey → Fin 16 → Fin 256)
+  (lengthBytes : Fin 8 → Fin 256),
+  (ProvenHashes.uniformProb fun key =>
+      ProvenHashes.Halftime.flatStyleWrapper x lengthBytes key =
+        ProvenHashes.Halftime.flatStyleWrapper y lengthBytes key) =
+    1 / 2 ^ 64 + (1 - 1 / 2 ^ 64) * ProvenHashes.uniformProb fun k => x k = y k
+'ProvenHashes.Halftime.flat_wrapper_equal_length' depends on axioms: [propext, Classical.choice, Quot.sound]
+ProvenHashes.Halftime.flat_wrapper_unequal_length : ∀ (x y : ProvenHashes.Halftime.LowerTableKey → Fin 16 → Fin 256)
+  (lengthBytes lengthBytes' : Fin 8 → Fin 256),
+  lengthBytes ≠ lengthBytes' →
+    (ProvenHashes.uniformProb fun key =>
+        ProvenHashes.Halftime.flatStyleWrapper x lengthBytes key =
+          ProvenHashes.Halftime.flatStyleWrapper y lengthBytes' key) ≤
+      1 / 2 ^ 64 + (1 - 1 / 2 ^ 64) * (1 / 2 ^ 64)
+'ProvenHashes.Halftime.flat_wrapper_unequal_length' depends on axioms: [propext, Classical.choice, Quot.sound]
+ProvenHashes.Halftime.wrapper_numeric_coefficient : 1 / 2 ^ 64 + (1 - 1 / 2 ^ 64) * (1 / 2 ^ 64) =
+  1 / 2 ^ 63 - 1 / 2 ^ 128
+'ProvenHashes.Halftime.wrapper_numeric_coefficient' depends on axioms: [propext, Classical.choice, Quot.sound]
+ProvenHashes.Halftime.flat_wrapper_normalized_from_core : ∀ (L : ℕ),
+  1 ≤ L →
+    ∀ (x y : ProvenHashes.Halftime.LowerTableKey → Fin 16 → Fin 256) (lengthBytes lengthBytes' : Fin 8 → Fin 256),
+      (lengthBytes = lengthBytes' → (ProvenHashes.uniformProb fun k => x k = y k) ≤ ↑L / 2 ^ 64) →
+        (ProvenHashes.uniformProb fun key =>
+            ProvenHashes.Halftime.flatStyleWrapper x lengthBytes key =
+              ProvenHashes.Halftime.flatStyleWrapper y lengthBytes' key) ≤
+          ↑L * (1 / 2 ^ 63 - 1 / 2 ^ 128)
+'ProvenHashes.Halftime.flat_wrapper_normalized_from_core' depends on axioms: [propext, Classical.choice, Quot.sound]
+ProvenHashes.Halftime.style_core_address_envelope : ∀ (b roots : ℕ),
+  b ≤ 8 → roots ≤ 64 → 659 + b * (2 * roots + 19) ≤ 1835 ∧ 1835 < 2048
+'ProvenHashes.Halftime.style_core_address_envelope' depends on axioms: [propext, Classical.choice, Quot.sound]
+ProvenHashes.Halftime.style_ehc_address : ∀ (s t : ℕ), s < 7 → t < 3 → 512 ≤ 512 + 3 * s + t ∧ 512 + 3 * s + t < 533
+'ProvenHashes.Halftime.style_ehc_address' depends on axioms: [propext, Classical.choice, Quot.sound]
+ProvenHashes.Halftime.style_tree_address : ∀ (j c v : ℕ),
+  j < 9 → c < 2 → v < 7 → 533 ≤ 533 + 14 * j + 7 * c + v ∧ 533 + 14 * j + 7 * c + v < 659
+'ProvenHashes.Halftime.style_tree_address' depends on axioms: [propext, Classical.choice, Quot.sound]
+ProvenHashes.Halftime.style_final_address : ∀ (b roots v c lane : ℕ),
+  v < roots → c < 2 → lane < b → 659 + b * (2 * v + c) + lane < 659 + 2 * b * roots
+'ProvenHashes.Halftime.style_final_address' depends on axioms: [propext, Classical.choice, Quot.sound]
+ProvenHashes.Halftime.style_tail_address : ∀ (b roots t c lane : ℕ),
+  t < 18 → c < 2 → lane < b → 659 + 2 * b * roots + b * (t + c) + lane < 659 + b * (2 * roots + 19)
+'ProvenHashes.Halftime.style_tail_address' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.conditional_event_affine : ∀ {K : Type u_1} {J : Type u_2} [inst : Fintype K] [Nonempty K]
+  [inst_2 : Fintype J] (E : K → Prop) (C : K → J → Prop),
+  ∀ ε ≤ 1,
+    (∀ (k : K), ¬E k → ProvenHashes.uniformProb (C k) ≤ ε) →
+      (ProvenHashes.uniformProb fun k => C k.1 k.2) ≤ ε + (1 - ε) * ProvenHashes.uniformProb E
+'ProvenHashes.Halftime.conditional_event_affine' depends on axioms: [propext, Classical.choice, Quot.sound]
+ProvenHashes.Halftime.failure_add_survival : ∀ ε ≤ 1,
+  ∀ (h : ℕ), ProvenHashes.Halftime.failure ε h + ProvenHashes.Halftime.survival ε h = 1
+'ProvenHashes.Halftime.failure_add_survival' depends on axioms: [propext, Classical.choice, Quot.sound]
+ProvenHashes.Halftime.failure_eq : ∀ ε ≤ 1, ∀ (h : ℕ), ProvenHashes.Halftime.failure ε h = 1 - (1 - ε) ^ h
+'ProvenHashes.Halftime.failure_eq' depends on axioms: [propext, Classical.choice, Quot.sound]
+ProvenHashes.Halftime.failure_mono_step : ∀ ε ≤ 1,
+  ∀ (h : ℕ), ProvenHashes.Halftime.failure ε h ≤ ProvenHashes.Halftime.failure ε (h + 1)
+'ProvenHashes.Halftime.failure_mono_step' depends on axioms: [propext, Classical.choice, Quot.sound]
+ProvenHashes.Halftime.failure_le_linear : ∀ (ε : ℚ≥0) (h : ℕ), ProvenHashes.Halftime.failure ε h ≤ ↑h * ε
+'ProvenHashes.Halftime.failure_le_linear' depends on axioms: [propext, Classical.choice, Quot.sound]
+ProvenHashes.Halftime.survival_le_one : ∀ (ε : ℚ≥0) (h : ℕ), ProvenHashes.Halftime.survival ε h ≤ 1
+'ProvenHashes.Halftime.survival_le_one' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.tree_collision_survival : ∀ {K : Type u_1} {W : Type u_2} [inst : Fintype K] [Nonempty K] {f : ℕ}
+  (g : K → (Fin f → W) → W),
+  ∀ ε ≤ 1,
+    (∀ (x y : Fin f → W), x ≠ y → (ProvenHashes.uniformProb fun k => g k x = g k y) ≤ ε) →
+      ∀ {h : ℕ} (s : ProvenHashes.Halftime.TreeShape f h) (x y : ProvenHashes.Halftime.TreeInput W s),
+        x ≠ y →
+          (ProvenHashes.uniformProb fun k =>
+              ProvenHashes.Halftime.treeHash g s x k = ProvenHashes.Halftime.treeHash g s y k) ≤
+            ProvenHashes.Halftime.failure ε h
+'ProvenHashes.Halftime.tree_collision_survival' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.forest_collision_survival : ∀ {I : Type u_1} {K : Type u_2} {W : Type u_3} [inst : Fintype K]
+  [Nonempty K] {f h : ℕ} (g : K → (Fin f → W) → W),
+  ∀ ε ≤ 1,
+    (∀ (x y : Fin f → W), x ≠ y → (ProvenHashes.uniformProb fun k => g k x = g k y) ≤ ε) →
+      ∀ (s : I → ProvenHashes.Halftime.TreeShape f h) (x y : (i : I) → ProvenHashes.Halftime.TreeInput W (s i)),
+        x ≠ y →
+          (ProvenHashes.uniformProb fun k =>
+              ProvenHashes.Halftime.forestHash g s x k = ProvenHashes.Halftime.forestHash g s y k) ≤
+            ProvenHashes.Halftime.failure ε h
+'ProvenHashes.Halftime.forest_collision_survival' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.forest_final_survival : ∀ {I : Type u_1} {K : Type u_2} {J : Type u_3} {W : Type u_4}
+  {R : Type u_5} [inst : Fintype K] [inst_1 : Fintype J] [Nonempty K] [Nonempty J] [inst_4 : AddCommGroup R] {f h : ℕ}
+  (g : K → (Fin f → W) → W),
+  ∀ ε ≤ 1,
+    (∀ (x y : Fin f → W), x ≠ y → (ProvenHashes.uniformProb fun k => g k x = g k y) ≤ ε) →
+      ∀ (s : I → ProvenHashes.Halftime.TreeShape f h) (x y : (i : I) → ProvenHashes.Halftime.TreeInput W (s i)),
+        x ≠ y →
+          ∀ (final : J → (I → W) → R),
+            (∀ (x y : I → W), x ≠ y → ∀ (t : R), (ProvenHashes.uniformProb fun k => final k x - final k y = t) ≤ ε) →
+              ∀ (t : R),
+                (ProvenHashes.uniformProb fun k =>
+                    final k.2 (ProvenHashes.Halftime.forestHash g s x k.1) -
+                        final k.2 (ProvenHashes.Halftime.forestHash g s y k.1) =
+                      t) ≤
+                  ProvenHashes.Halftime.failure ε (h + 1)
+'ProvenHashes.Halftime.forest_final_survival' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.component_product_affine : ∀ {I : Type u_1} {K : Type u_2} {J : Type u_3} [inst : Fintype I]
+  [inst_1 : DecidableEq I] [inst_2 : Fintype K] [inst_3 : Fintype J] (E : I → K → Prop) (C : K → I → J → Prop)
+  (a s : ℚ≥0),
+  a + s = 1 →
+    (∀ (k : K) (i : I), ¬E i k → ProvenHashes.uniformProb (C k i) ≤ a) →
+      (ProvenHashes.uniformProb fun k => ∀ (i : I), C k.1 i (k.2 i)) ≤
+        ProvenHashes.Halftime.mean fun k => ∏ i, (a + s * ProvenHashes.Halftime.indicator (E i) k)
+'ProvenHashes.Halftime.component_product_affine' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.product_two_affine_expansion : ∀ {K : Type u_1} (E : Fin 2 → K → Prop) (a s : ℚ≥0) (k : K),
+  ∏ i, (a + s * ProvenHashes.Halftime.indicator (E i) k) =
+    a ^ 2 + a * s * (ProvenHashes.Halftime.indicator (E 0) k + ProvenHashes.Halftime.indicator (E 1) k) +
+      s ^ 2 * ProvenHashes.Halftime.indicator (fun k => E 0 k ∧ E 1 k) k
+'ProvenHashes.Halftime.product_two_affine_expansion' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.end_to_end_two_survival_from_subsets : ∀ {K : Type u_1} {J : Type u_2} [inst : Fintype K]
+  [Nonempty K] [inst_2 : Fintype J] (E : Fin 2 → K → Prop) (C : K → Fin 2 → J → Prop),
+  ∀ ε ≤ 1,
+    ∀ (h : ℕ),
+      (∀ (k : K) (i : Fin 2), ¬E i k → ProvenHashes.uniformProb (C k i) ≤ ProvenHashes.Halftime.failure ε (h + 1)) →
+        ProvenHashes.uniformProb (E 0) + ProvenHashes.uniformProb (E 1) ≤ 3 * ε →
+          (ProvenHashes.uniformProb fun k => E 0 k ∧ E 1 k) ≤ 2 * ε ^ 2 →
+            (ProvenHashes.uniformProb fun k => ∀ (i : Fin 2), C k.1 i (k.2 i)) ≤ ProvenHashes.Halftime.styleTwoBound ε h
+'ProvenHashes.Halftime.end_to_end_two_survival_from_subsets' depends on axioms: [propext, Classical.choice, Quot.sound]
+ProvenHashes.Halftime.styleTwoBound_formula : ∀ ε ≤ 1,
+  ∀ (h : ℕ),
+    ProvenHashes.Halftime.styleTwoBound ε h =
+      (1 - (1 - ε) ^ (h + 1) + (1 - ε) ^ (h + 1) * ε) * (1 - (1 - ε) ^ (h + 1) + 2 * (1 - ε) ^ (h + 1) * ε)
+'ProvenHashes.Halftime.styleTwoBound_formula' depends on axioms: [propext, Classical.choice, Quot.sound]
+ProvenHashes.Halftime.styleTwoBound_le : ∀ (ε : ℚ≥0) (h : ℕ),
+  ProvenHashes.Halftime.styleTwoBound ε h ≤ (↑h + 2) * (↑h + 3) * ε ^ 2
+'ProvenHashes.Halftime.styleTwoBound_le' depends on axioms: [propext, Classical.choice, Quot.sound]
+ProvenHashes.Halftime.four_mul_eq_iff_lowBits_eq : ∀ (x y : ZMod (2 ^ 64)),
+  4 * x = 4 * y ↔ (ProvenHashes.Halftime.lowBits 62 ⋯) x = (ProvenHashes.Halftime.lowBits 62 ⋯) y
+'ProvenHashes.Halftime.four_mul_eq_iff_lowBits_eq' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.mul_atom_of_lowBits : ∀ {K : Type u_1} [inst : Fintype K] (d : K → ZMod (2 ^ 64))
+  (c w : ZMod (2 ^ 64)),
+  w * c = 4 →
+    ∀ (η : ℚ≥0),
+      (∀ (z : ZMod (2 ^ 62)), (ProvenHashes.uniformProb fun k => (ProvenHashes.Halftime.lowBits 62 ⋯) (d k) = z) ≤ η) →
+        ∀ (t : ZMod (2 ^ 64)), (ProvenHashes.uniformProb fun k => c * d k = t) ≤ η
+'ProvenHashes.Halftime.mul_atom_of_lowBits' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.linear_pair_sharp : ∀ {K : Type u_1} [inst : Fintype K] [Nonempty K] (p q : K → ZMod (2 ^ 64))
+  (b c d w : ZMod (2 ^ 64)),
+  w * (d - c * b) = 4 →
+    ∀ (ε η : ℚ≥0),
+      (∀ (t : ZMod (2 ^ 64)), (ProvenHashes.uniformProb fun k => p k = t) ≤ ε) →
+        (∀ (z : ZMod (2 ^ 62)),
+            (ProvenHashes.uniformProb fun k => (ProvenHashes.Halftime.lowBits 62 ⋯) (q k) = z) ≤ η) →
+          ∀ (u v : ZMod (2 ^ 64)),
+            (ProvenHashes.uniformProb fun k => p k.2 + b * q k.1 = u ∧ c * p k.2 + d * q k.1 = v) ≤ ε * η
+'ProvenHashes.Halftime.linear_pair_sharp' depends on axioms: [propext, Classical.choice, Quot.sound]
+ProvenHashes.Halftime.T2_four_witness : ∀ (a b : Fin 7),
+  a ≠ b →
+    (ProvenHashes.Halftime.fourWitness (ProvenHashes.Halftime.det2 ProvenHashes.Halftime.T2 0 1 a b) *
+            ProvenHashes.Halftime.det2 ProvenHashes.Halftime.T2 0 1 a b -
+          4) %
+        2 ^ 64 =
+      0
+'ProvenHashes.Halftime.T2_four_witness' depends on axioms: [propext, Quot.sound]
+ProvenHashes.Halftime.T2_column_unit : ∀ (a : Fin 7),
+  ProvenHashes.Halftime.T2 0 a = 1 ∨ ProvenHashes.Halftime.T2 1 a = 1
+'ProvenHashes.Halftime.T2_column_unit' depends on axioms: [propext, Quot.sound]
+ProvenHashes.Halftime.T2_witness_mul : ∀ (a b : Fin 7),
+  a ≠ b →
+    ↑(ProvenHashes.Halftime.fourWitness (ProvenHashes.Halftime.det2 ProvenHashes.Halftime.T2 0 1 a b)) *
+        ↑(ProvenHashes.Halftime.det2 ProvenHashes.Halftime.T2 0 1 a b) =
+      4
+'ProvenHashes.Halftime.T2_witness_mul' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.combine_selected_custom : ∀ {I : Type u_1} {K : Type u_2} [inst : Fintype I]
+  [inst_1 : DecidableEq I] [inst_2 : Fintype K] [Nonempty K] {r : ℕ} (T : Matrix (Fin r) I ℤ) (j : Fin r ↪ I)
+  (d : I → K → ZMod (2 ^ 64)) (η : ℚ≥0),
+  (∀ (b : Fin r → ZMod (2 ^ 64)),
+      (ProvenHashes.uniformProb fun k =>
+          (((T.submatrix id ⇑j).map ⇑(Int.castRingHom (ZMod (2 ^ 64)))).mulVec fun i => d (j i) (k i)) = b) ≤
+        η) →
+    ∀ (b : Fin r → ZMod (2 ^ 64)), (ProvenHashes.uniformProb fun k => ProvenHashes.Halftime.combine T d k = b) ≤ η
+'ProvenHashes.Halftime.combine_selected_custom' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.T2_selected_sharp : ∀ {K : Type u_1} [inst : Fintype K] [Nonempty K] (j : Fin 2 ↪ Fin 7)
+  (d : Fin 7 → K → ZMod (2 ^ 64)) (ε η : ℚ≥0),
+  (∀ (i : Fin 2) (t : ZMod (2 ^ 64)), (ProvenHashes.uniformProb fun k => d (j i) k = t) ≤ ε) →
+    (∀ (i : Fin 2) (t : ZMod (2 ^ 62)),
+        (ProvenHashes.uniformProb fun k => (ProvenHashes.Halftime.lowBits 62 ⋯) (d (j i) k) = t) ≤ η) →
+      ∀ (b : Fin 2 → ZMod (2 ^ 64)),
+        (ProvenHashes.uniformProb fun k =>
+            (((ProvenHashes.Halftime.T2.submatrix id ⇑j).map ⇑(Int.castRingHom (ZMod (2 ^ 64)))).mulVec fun i =>
+                d (j i) (k i)) =
+              b) ≤
+          ε * η
+'ProvenHashes.Halftime.T2_selected_sharp' depends on axioms: [propext, Classical.choice, Quot.sound]
+ProvenHashes.Halftime.T2_entry_cases : ∀ (r : Fin 2) (a : Fin 7),
+  ProvenHashes.Halftime.T2 r a = 0 ∨
+    ProvenHashes.Halftime.T2 r a = 1 ∨ ProvenHashes.Halftime.T2 r a = 2 ∨ ProvenHashes.Halftime.T2 r a = 4
+'ProvenHashes.Halftime.T2_entry_cases' depends on axioms: [propext, Quot.sound]
+ProvenHashes.Halftime.T2_sharp_coefficients : ∀ (a b : Fin 7),
+  a ≠ b →
+    min (ProvenHashes.Halftime.sharpEntryWeight (ProvenHashes.Halftime.T2 0 a))
+          (ProvenHashes.Halftime.sharpEntryWeight (ProvenHashes.Halftime.T2 0 b)) +
+        min (ProvenHashes.Halftime.sharpEntryWeight (ProvenHashes.Halftime.T2 1 a))
+          (ProvenHashes.Halftime.sharpEntryWeight (ProvenHashes.Halftime.T2 1 b)) ≤
+      3
+'ProvenHashes.Halftime.T2_sharp_coefficients' depends on axioms: [propext, Quot.sound]
+@ProvenHashes.Halftime.T2_entry_atom : ∀ {K : Type u_1} [inst : Fintype K] (r : Fin 2) (a : Fin 7)
+  (d : K → ZMod (2 ^ 64)),
+  (∀ (t : ZMod (2 ^ 64)), (ProvenHashes.uniformProb fun k => d k = t) ≤ 1 / 2 ^ 32) →
+    (∀ (t : ZMod (2 ^ 62)),
+        (ProvenHashes.uniformProb fun k => (ProvenHashes.Halftime.lowBits 62 ⋯) (d k) = t) ≤ 2 / 2 ^ 32) →
+      ∀ (t : ZMod (2 ^ 64)),
+        (ProvenHashes.uniformProb fun k => ↑(ProvenHashes.Halftime.T2 r a) * d k = t) ≤
+          ↑(ProvenHashes.Halftime.sharpEntryWeight (ProvenHashes.Halftime.T2 r a)) / 2 ^ 32
+'ProvenHashes.Halftime.T2_entry_atom' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.row_atom_custom : ∀ {I : Type u_1} {K : Type u_2} [inst : Fintype I] [inst_1 : DecidableEq I]
+  [inst_2 : Fintype K] [Nonempty K] {r : ℕ} (T : Matrix (Fin r) I ℤ) (row : Fin r) (a : I) (d : I → K → ZMod (2 ^ 64))
+  (η : ℚ≥0),
+  (∀ (t : ZMod (2 ^ 64)), (ProvenHashes.uniformProb fun k => ↑(T row a) * d a k = t) ≤ η) →
+    ∀ (t : ZMod (2 ^ 64)), (ProvenHashes.uniformProb fun k => ProvenHashes.Halftime.combine T d k row = t) ≤ η
+'ProvenHashes.Halftime.row_atom_custom' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.T2_sharp_subset_bounds : ∀ {K : Type u_1} [inst : Fintype K] [Nonempty K]
+  (d : Fin 7 → K → ZMod (2 ^ 64)) (j : Fin 2 ↪ Fin 7),
+  (∀ (i : Fin 2) (z : ZMod (2 ^ 64)), (ProvenHashes.uniformProb fun k => d (j i) k = z) ≤ 1 / 2 ^ 32) →
+    (∀ (i : Fin 2) (z : ZMod (2 ^ 62)),
+        (ProvenHashes.uniformProb fun k => (ProvenHashes.Halftime.lowBits 62 ⋯) (d (j i) k) = z) ≤ 2 / 2 ^ 32) →
+      ∀ (b : Fin 2 → ZMod (2 ^ 64)),
+        ((ProvenHashes.uniformProb fun k => ProvenHashes.Halftime.combine ProvenHashes.Halftime.T2 d k 0 = b 0) +
+              ProvenHashes.uniformProb fun k => ProvenHashes.Halftime.combine ProvenHashes.Halftime.T2 d k 1 = b 1) ≤
+            3 / 2 ^ 32 ∧
+          (ProvenHashes.uniformProb fun k =>
+              ProvenHashes.Halftime.combine ProvenHashes.Halftime.T2 d k 0 = b 0 ∧
+                ProvenHashes.Halftime.combine ProvenHashes.Halftime.T2 d k 1 = b 1) ≤
+            2 / 2 ^ 64
+'ProvenHashes.Halftime.T2_sharp_subset_bounds' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.nh_T2_sharp_subset_bounds : ∀ {n : ℕ} (x y : Fin 7 → Fin n × Bool → ZMod (2 ^ 32))
+  (j : Fin 2 ↪ Fin 7),
+  (∀ (i : Fin 2), x (j i) ≠ y (j i)) →
+    ∀ (b : Fin 2 → ZMod (2 ^ 64)),
+      have d := fun i k => ProvenHashes.Halftime.nh32 (x i) k - ProvenHashes.Halftime.nh32 (y i) k;
+      ((ProvenHashes.uniformProb fun k => ProvenHashes.Halftime.combine ProvenHashes.Halftime.T2 d k 0 = b 0) +
+            ProvenHashes.uniformProb fun k => ProvenHashes.Halftime.combine ProvenHashes.Halftime.T2 d k 1 = b 1) ≤
+          3 / 2 ^ 32 ∧
+        (ProvenHashes.uniformProb fun k =>
+            ProvenHashes.Halftime.combine ProvenHashes.Halftime.T2 d k 0 = b 0 ∧
+              ProvenHashes.Halftime.combine ProvenHashes.Halftime.T2 d k 1 = b 1) ≤
+          2 / 2 ^ 64
+'ProvenHashes.Halftime.nh_T2_sharp_subset_bounds' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.forestCore_component_survival : ∀ {X : Type u_1} {I : Type u_2} {K : Type u_3} {J : Type u_4}
+  [inst : Fintype K] [Nonempty K] [inst_2 : Fintype J] [Nonempty J] {N r n f h : ℕ}
+  (encode : X → Fin N → Fin n × Bool → ZMod (2 ^ 32)) (T : Matrix (Fin r) (Fin N) ℤ)
+  (g : Fin r → K → (Fin f → ZMod (2 ^ 64)) → ZMod (2 ^ 64)) (final : Fin r → J → (I → ZMod (2 ^ 64)) → ZMod (2 ^ 64)),
+  (∀ (row : Fin r) (x y : Fin f → ZMod (2 ^ 64)),
+      x ≠ y → (ProvenHashes.uniformProb fun k => g row k x = g row k y) ≤ 1 / 2 ^ 32) →
+    (∀ (row : Fin r) (x y : I → ZMod (2 ^ 64)),
+        x ≠ y →
+          ∀ (t : ZMod (2 ^ 64)), (ProvenHashes.uniformProb fun k => final row k x - final row k y = t) ≤ 1 / 2 ^ 32) →
+      ∀ (s : I → ProvenHashes.Halftime.TreeShape f h) (x y : (i : I) → ProvenHashes.Halftime.TreeInput X (s i))
+        (root : I) (p : ProvenHashes.Halftime.LeafPath (s root)) (key : Fin N → Fin n × Bool → ZMod (2 ^ 32))
+        (row : Fin r),
+        ProvenHashes.Halftime.ehc encode T (ProvenHashes.Halftime.leafValue (s root) (x root) p) key row ≠
+            ProvenHashes.Halftime.ehc encode T (ProvenHashes.Halftime.leafValue (s root) (y root) p) key row →
+          ∀ (t : ZMod (2 ^ 64)),
+            (ProvenHashes.uniformProb fun k =>
+                final row k.2
+                      (ProvenHashes.Halftime.forestHash (g row) s
+                        (fun i =>
+                          ProvenHashes.Halftime.mapLeaves (fun v => ProvenHashes.Halftime.ehc encode T v key row) (s i)
+                            (x i))
+                        k.1) -
+                    final row k.2
+                      (ProvenHashes.Halftime.forestHash (g row) s
+                        (fun i =>
+                          ProvenHashes.Halftime.mapLeaves (fun v => ProvenHashes.Halftime.ehc encode T v key row) (s i)
+                            (y i))
+                        k.1) =
+                  t) ≤
+              ProvenHashes.Halftime.failure (1 / 2 ^ 32) (h + 1)
+'ProvenHashes.Halftime.forestCore_component_survival' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.forestCore_two_survival : ∀ {X : Type u_1} {I : Type u_2} {K : Type u_3} {J : Type u_4}
+  [inst : Fintype K] [Nonempty K] [inst_2 : Fintype J] [Nonempty J] {n f h : ℕ}
+  (encode : X → Fin 7 → Fin n × Bool → ZMod (2 ^ 32)),
+  (∀ (x y : X), x ≠ y → ∃ j, ∀ (i : Fin 2), encode x (j i) ≠ encode y (j i)) →
+    ∀ (g : Fin 2 → K → (Fin f → ZMod (2 ^ 64)) → ZMod (2 ^ 64))
+      (final : Fin 2 → J → (I → ZMod (2 ^ 64)) → ZMod (2 ^ 64)),
+      (∀ (row : Fin 2) (x y : Fin f → ZMod (2 ^ 64)),
+          x ≠ y → (ProvenHashes.uniformProb fun k => g row k x = g row k y) ≤ 1 / 2 ^ 32) →
+        (∀ (row : Fin 2) (x y : I → ZMod (2 ^ 64)),
+            x ≠ y →
+              ∀ (t : ZMod (2 ^ 64)),
+                (ProvenHashes.uniformProb fun k => final row k x - final row k y = t) ≤ 1 / 2 ^ 32) →
+          ∀ (s : I → ProvenHashes.Halftime.TreeShape f h) (x y : (i : I) → ProvenHashes.Halftime.TreeInput X (s i)),
+            x ≠ y →
+              ∀ (b : Fin 2 → ZMod (2 ^ 64)),
+                (ProvenHashes.uniformProb fun k =>
+                    ProvenHashes.Halftime.forestCore encode ProvenHashes.Halftime.T2 g final s x k -
+                        ProvenHashes.Halftime.forestCore encode ProvenHashes.Halftime.T2 g final s y k =
+                      b) ≤
+                  ProvenHashes.Halftime.styleTwoBound (1 / 2 ^ 32) h
+'ProvenHashes.Halftime.forestCore_two_survival' depends on axioms: [propext, Classical.choice, Quot.sound]
+ProvenHashes.Halftime.epsilon_sq_le_styleTwoBound : ∀ ε ≤ 1, ∀ (h : ℕ), ε ^ 2 ≤ ProvenHashes.Halftime.styleTwoBound ε h
+'ProvenHashes.Halftime.epsilon_sq_le_styleTwoBound' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.halftimeCore_two_survival : ∀ {X : Type u_1} {I : Type u_2} {K : Type u_3} {J : Type u_4}
+  [inst : Fintype K] [Nonempty K] [inst_2 : Fintype J] [Nonempty J] {n f h l : ℕ}
+  (encode : X → Fin 7 → Fin n × Bool → ZMod (2 ^ 32)),
+  (∀ (x y : X), x ≠ y → ∃ j, ∀ (i : Fin 2), encode x (j i) ≠ encode y (j i)) →
+    ∀ (g : Fin 2 → K → (Fin f → ZMod (2 ^ 64)) → ZMod (2 ^ 64))
+      (final : Fin 2 → J → (I → ZMod (2 ^ 64)) → ZMod (2 ^ 64)),
+      (∀ (row : Fin 2) (x y : Fin f → ZMod (2 ^ 64)),
+          x ≠ y → (ProvenHashes.uniformProb fun k => g row k x = g row k y) ≤ 1 / 2 ^ 32) →
+        (∀ (row : Fin 2) (x y : I → ZMod (2 ^ 64)),
+            x ≠ y →
+              ∀ (t : ZMod (2 ^ 64)),
+                (ProvenHashes.uniformProb fun k => final row k x - final row k y = t) ≤ 1 / 2 ^ 32) →
+          ∀ (s : I → ProvenHashes.Halftime.TreeShape f h)
+            (x y : ((i : I) → ProvenHashes.Halftime.TreeInput X (s i)) × (Fin l × Bool → ZMod (2 ^ 32))),
+            x ≠ y →
+              ∀ (b : Fin 2 → ZMod (2 ^ 64)),
+                (ProvenHashes.uniformProb fun k =>
+                    ProvenHashes.Halftime.halftimeCore encode ProvenHashes.Halftime.T2 g final s x k -
+                        ProvenHashes.Halftime.halftimeCore encode ProvenHashes.Halftime.T2 g final s y k =
+                      b) ≤
+                  ProvenHashes.Halftime.styleTwoBound (1 / 2 ^ 32) h
+'ProvenHashes.Halftime.halftimeCore_two_survival' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.scalar_halftime_two_survival : ∀ {X : Type u_1} {n nt roots h l : ℕ}
+  (encode : X → Fin 7 → Fin n × Bool → ZMod (2 ^ 32)),
+  (∀ (x y : X), x ≠ y → ∃ j, ∀ (i : Fin 2), encode x (j i) ≠ encode y (j i)) →
+    ∀ (s : Fin roots → ProvenHashes.Halftime.TreeShape (nt + 1) h)
+      (x y : ((i : Fin roots) → ProvenHashes.Halftime.TreeInput X (s i)) × (Fin l × Bool → ZMod (2 ^ 32))),
+      x ≠ y →
+        ∀ (b : Fin 2 → ZMod (2 ^ 64)),
+          (ProvenHashes.uniformProb fun k =>
+              ProvenHashes.Halftime.halftimeCore encode ProvenHashes.Halftime.T2
+                    (fun x => ProvenHashes.Halftime.nhNode ProvenHashes.Halftime.packTree)
+                    (fun x key v => ProvenHashes.Halftime.nh32 (ProvenHashes.Halftime.packWords v) key) s x k -
+                  ProvenHashes.Halftime.halftimeCore encode ProvenHashes.Halftime.T2
+                    (fun x => ProvenHashes.Halftime.nhNode ProvenHashes.Halftime.packTree)
+                    (fun x key v => ProvenHashes.Halftime.nh32 (ProvenHashes.Halftime.packWords v) key) s y k =
+                b) ≤
+            ProvenHashes.Halftime.styleTwoBound (1 / 2 ^ 32) h
+'ProvenHashes.Halftime.scalar_halftime_two_survival' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.systematicParity_distance : ∀ {A : Type u_1} [inst : AddCommGroup A] {n : ℕ} (x y : Fin n → A),
+  x ≠ y →
+    ∃ j, ∀ (i : Fin 2), ProvenHashes.Halftime.systematicParity x (j i) ≠ ProvenHashes.Halftime.systematicParity y (j i)
+'ProvenHashes.Halftime.systematicParity_distance' depends on axioms: [propext, Classical.choice, Quot.sound]
+ProvenHashes.Halftime.encode2_distance : ∀ (x y : ProvenHashes.Halftime.Encode2Input),
+  x ≠ y → ∃ j, ∀ (i : Fin 2), ProvenHashes.Halftime.encode2 x (j i) ≠ ProvenHashes.Halftime.encode2 y (j i)
+'ProvenHashes.Halftime.encode2_distance' depends on axioms: [propext, Classical.choice, Quot.sound]
+ProvenHashes.Halftime.encode2_systematic : ∀ (x : ProvenHashes.Halftime.Encode2Input) (i : Fin 6) (p : Fin 3 × Bool),
+  ProvenHashes.Halftime.encode2 x i.castSucc p = (ProvenHashes.Halftime.xorWordEquiv 32) (x i p)
+'ProvenHashes.Halftime.encode2_systematic' depends on axioms: [propext, Classical.choice, Quot.sound]
+ProvenHashes.Halftime.encode2_parity : ∀ (x : ProvenHashes.Halftime.Encode2Input) (p : Fin 3 × Bool),
+  ProvenHashes.Halftime.encode2 x (Fin.last 6) p = (ProvenHashes.Halftime.xorWordEquiv 32) (∑ i, x i p)
+'ProvenHashes.Halftime.encode2_parity' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.encode2_scalar_survival : ∀ {nt roots h l : ℕ}
+  (s : Fin roots → ProvenHashes.Halftime.TreeShape (nt + 1) h)
+  (x y :
+    ((i : Fin roots) → ProvenHashes.Halftime.TreeInput ProvenHashes.Halftime.Encode2Input (s i)) ×
+      (Fin l × Bool → ZMod (2 ^ 32))),
+  x ≠ y →
+    ∀ (b : Fin 2 → ZMod (2 ^ 64)),
+      (ProvenHashes.uniformProb fun k =>
+          ProvenHashes.Halftime.halftimeCore ProvenHashes.Halftime.encode2 ProvenHashes.Halftime.T2
+                (fun x => ProvenHashes.Halftime.nhNode ProvenHashes.Halftime.packTree)
+                (fun x key v => ProvenHashes.Halftime.nh32 (ProvenHashes.Halftime.packWords v) key) s x k -
+              ProvenHashes.Halftime.halftimeCore ProvenHashes.Halftime.encode2 ProvenHashes.Halftime.T2
+                (fun x => ProvenHashes.Halftime.nhNode ProvenHashes.Halftime.packTree)
+                (fun x key v => ProvenHashes.Halftime.nh32 (ProvenHashes.Halftime.packWords v) key) s y k =
+            b) ≤
+        ProvenHashes.Halftime.styleTwoBound (1 / 2 ^ 32) h
+'ProvenHashes.Halftime.encode2_scalar_survival' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.headTreePack_injective : ∀ {m : ℕ}, Function.Injective ProvenHashes.Halftime.headTreePack
+'ProvenHashes.Halftime.headTreePack_injective' depends on axioms: [propext, Quot.sound]
+@ProvenHashes.Halftime.styleNode_au : ∀ {b : ℕ} (x y : Fin 8 → Fin b → ProvenHashes.Halftime.Word64),
+  x ≠ y →
+    (ProvenHashes.uniformProb fun key =>
+        ProvenHashes.Halftime.styleNode key x = ProvenHashes.Halftime.styleNode key y) ≤
+      1 / 2 ^ 32
+'ProvenHashes.Halftime.styleNode_au' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.flattenBlocks_injective : ∀ {roots b : ℕ}, Function.Injective ProvenHashes.Halftime.flattenBlocks
+'ProvenHashes.Halftime.flattenBlocks_injective' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.styleFinal_adu : ∀ {roots b : ℕ} (x y : Fin roots → Fin b → ProvenHashes.Halftime.Word64),
+  x ≠ y →
+    ∀ (t : ProvenHashes.Halftime.Word64),
+      (ProvenHashes.uniformProb fun key =>
+          ProvenHashes.Halftime.styleFinal key x - ProvenHashes.Halftime.styleFinal key y = t) ≤
+        1 / 2 ^ 32
+'ProvenHashes.Halftime.styleFinal_adu' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.styleForest_survival : ∀ {b h roots : ℕ} (s : Fin roots → ProvenHashes.Halftime.TreeShape 8 h)
+  (x y : (i : Fin roots) → ProvenHashes.Halftime.TreeInput (Fin b → ProvenHashes.Halftime.Encode2Input) (s i)),
+  x ≠ y →
+    ∀ (target : Fin 2 → ProvenHashes.Halftime.Word64),
+      (ProvenHashes.uniformProb fun key =>
+          ProvenHashes.Halftime.styleForest s x key - ProvenHashes.Halftime.styleForest s y key = target) ≤
+        ProvenHashes.Halftime.styleTwoBound (1 / 2 ^ 32) h
+'ProvenHashes.Halftime.styleForest_survival' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.toeplitzNH_selected_adu : ∀ {n r m : ℕ} (x y : ProvenHashes.Halftime.PairKey n),
+  x ≠ y →
+    ∀ (offset : Fin r → Fin m),
+      StrictMono offset →
+        ∀ (target : Fin r → ProvenHashes.Halftime.Word64),
+          (ProvenHashes.uniformProb fun key =>
+              ∀ (j : Fin r),
+                ProvenHashes.Halftime.toeplitzNH x key (offset j) - ProvenHashes.Halftime.toeplitzNH y key (offset j) =
+                  target j) ≤
+            (1 / 2 ^ 32) ^ r
+'ProvenHashes.Halftime.toeplitzNH_selected_adu' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.styleOffset_strictMono : ∀ {b : ℕ}, 0 < b → StrictMono (ProvenHashes.Halftime.styleOffset b)
+'ProvenHashes.Halftime.styleOffset_strictMono' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.styleTail_adu : ∀ {b l : ℕ},
+  0 < b →
+    ∀ (x y : ProvenHashes.Halftime.PairKey l),
+      x ≠ y →
+        ∀ (target : Fin 2 → ProvenHashes.Halftime.Word64),
+          (ProvenHashes.uniformProb fun key =>
+              ProvenHashes.Halftime.styleTail x key - ProvenHashes.Halftime.styleTail y key = target) ≤
+            (1 / 2 ^ 32) ^ 2
+'ProvenHashes.Halftime.styleTail_adu' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.styleCore_different_tail : ∀ {b h roots l : ℕ},
+  0 < b →
+    ∀ (s : Fin roots → ProvenHashes.Halftime.TreeShape 8 h)
+      (x y :
+        ((i : Fin roots) → ProvenHashes.Halftime.TreeInput (Fin b → ProvenHashes.Halftime.Encode2Input) (s i)) ×
+          ProvenHashes.Halftime.PairKey l),
+      x.2 ≠ y.2 →
+        ∀ (target : Fin 2 → ProvenHashes.Halftime.Word64),
+          (ProvenHashes.uniformProb fun key =>
+              ProvenHashes.Halftime.styleCore s x key - ProvenHashes.Halftime.styleCore s y key = target) ≤
+            (1 / 2 ^ 32) ^ 2
+'ProvenHashes.Halftime.styleCore_different_tail' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.styleCore_survival : ∀ {b h roots l : ℕ},
+  0 < b →
+    ∀ (s : Fin roots → ProvenHashes.Halftime.TreeShape 8 h)
+      (x y :
+        ((i : Fin roots) → ProvenHashes.Halftime.TreeInput (Fin b → ProvenHashes.Halftime.Encode2Input) (s i)) ×
+          ProvenHashes.Halftime.PairKey l),
+      x ≠ y →
+        ∀ (target : Fin 2 → ProvenHashes.Halftime.Word64),
+          (ProvenHashes.uniformProb fun key =>
+              ProvenHashes.Halftime.styleCore s x key - ProvenHashes.Halftime.styleCore s y key = target) ≤
+            ProvenHashes.Halftime.styleTwoBound (1 / 2 ^ 32) h
+'ProvenHashes.Halftime.styleCore_survival' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.uniformProb_restrict : ∀ {I : Type u_1} {J : Type u_2} {V : Type u_3} [inst : Fintype I]
+  [inst_1 : Fintype J] [inst_2 : Fintype V] [inst_3 : DecidableEq I] [inst_4 : DecidableEq J] [Nonempty V] (e : I ↪ J)
+  (E : (I → V) → Prop), (ProvenHashes.uniformProb fun k => E fun i => k (e i)) = ProvenHashes.uniformProb E
+'ProvenHashes.Halftime.uniformProb_restrict' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.styleWordAddress_ehc : ∀ {b h roots l : ℕ} (s : Fin 7) (t : Fin 3),
+  ProvenHashes.Halftime.styleWordAddressNat (Sum.inl (s, t)) = 512 + 3 * ↑s + ↑t
+'ProvenHashes.Halftime.styleWordAddress_ehc' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.styleWordAddress_tree : ∀ {b h roots l : ℕ} (j : Fin h) (c : Fin 2) (v : Fin 7),
+  ProvenHashes.Halftime.styleWordAddressNat (Sum.inr (Sum.inl (j, c, v))) = 533 + 14 * ↑j + 7 * ↑c + ↑v
+'ProvenHashes.Halftime.styleWordAddress_tree' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.styleWordAddress_final : ∀ {b h roots l : ℕ} (v : Fin roots) (c : Fin 2) (lane : Fin b),
+  ProvenHashes.Halftime.styleWordAddressNat (Sum.inr (Sum.inr (Sum.inl ((v, c), lane)))) =
+    659 + b * (2 * ↑v + ↑c) + ↑lane
+'ProvenHashes.Halftime.styleWordAddress_final' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.styleWordAddress_tail : ∀ {b h roots l : ℕ} (p : Fin (l + (b + 1) - 1)),
+  ProvenHashes.Halftime.styleWordAddressNat (Sum.inr (Sum.inr (Sum.inr p))) = 659 + 2 * b * roots + ↑p
+'ProvenHashes.Halftime.styleWordAddress_tail' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.styleWordAddressNat_injective : ∀ {b h roots l : ℕ},
+  h ≤ 9 → Function.Injective ProvenHashes.Halftime.styleWordAddressNat
+'ProvenHashes.Halftime.styleWordAddressNat_injective' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.styleWordAddressNat_lt : ∀ {b h roots l : ℕ},
+  b ≤ 8 →
+    h ≤ 9 →
+      roots ≤ 64 →
+        l ≤ 18 * b →
+          ∀ (i : ProvenHashes.Halftime.StyleWordIndex b h roots l), ProvenHashes.Halftime.styleWordAddressNat i < 2048
+'ProvenHashes.Halftime.styleWordAddressNat_lt' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.readStyleKey_uniform : ∀ {b h roots l : ℕ} (hb : b ≤ 8) (hh : h ≤ 9) (hr : roots ≤ 64)
+  (hl : l ≤ 18 * b) (E : ProvenHashes.Halftime.StyleKey b h roots l → Prop),
+  (ProvenHashes.uniformProb fun key => E (ProvenHashes.Halftime.readStyleKey hb hh hr hl key)) =
+    ProvenHashes.uniformProb E
+'ProvenHashes.Halftime.readStyleKey_uniform' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.flatStyleCore_survival : ∀ {b h roots l : ℕ},
+  0 < b →
+    ∀ (hb : b ≤ 8) (hh : h ≤ 9) (hr : roots ≤ 64) (hl : l ≤ 18 * b)
+      (s : Fin roots → ProvenHashes.Halftime.TreeShape 8 h)
+      (x y :
+        ((i : Fin roots) → ProvenHashes.Halftime.TreeInput (Fin b → ProvenHashes.Halftime.Encode2Input) (s i)) ×
+          ProvenHashes.Halftime.PairKey l),
+      x ≠ y →
+        ∀ (target : Fin 2 → ProvenHashes.Halftime.Word64),
+          (ProvenHashes.uniformProb fun key =>
+              ProvenHashes.Halftime.flatStyleCore hb hh hr hl s x key -
+                  ProvenHashes.Halftime.flatStyleCore hb hh hr hl s y key =
+                target) ≤
+            ProvenHashes.Halftime.styleTwoBound (1 / 2 ^ 32) h
+'ProvenHashes.Halftime.flatStyleCore_survival' depends on axioms: [propext, Classical.choice, Quot.sound]
+ProvenHashes.Halftime.style_height_coefficient : ∀ (h : ℕ), (h + 2) * (h + 3) ≤ 18 * 8 ^ h
+'ProvenHashes.Halftime.style_height_coefficient' depends on axioms: [propext, Classical.choice, Quot.sound]
+ProvenHashes.Halftime.styleTwoBound_word_cap : ∀ (h L b : ℕ),
+  0 < b → 18 * b * 8 ^ h ≤ L → ProvenHashes.Halftime.styleTwoBound (1 / 2 ^ 32) h ≤ ↑L / 2 ^ 64
+'ProvenHashes.Halftime.styleTwoBound_word_cap' depends on axioms: [propext, Classical.choice, Quot.sound]
+ProvenHashes.Halftime.style_log_height_word_cap : ∀ (n L b : ℕ),
+  0 < b → n ≠ 0 → 18 * b * n ≤ L → ProvenHashes.Halftime.styleTwoBound (1 / 2 ^ 32) (Nat.log 8 n) ≤ ↑L / 2 ^ 64
+'ProvenHashes.Halftime.style_log_height_word_cap' depends on axioms: [propext, Classical.choice, Quot.sound]
+ProvenHashes.Halftime.flat_wrapper_word_cap : ∀ (L : ℕ),
+  1 ≤ L →
+    ∀ (x y : ProvenHashes.Halftime.LowerTableKey → Fin 16 → Fin 256) (lx ly : Fin 8 → Fin 256),
+      (lx = ly → (ProvenHashes.uniformProb fun k => x k = y k) ≤ ↑L / 2 ^ 64) →
+        (ProvenHashes.uniformProb fun key =>
+            ProvenHashes.Halftime.flatStyleWrapper x lx key = ProvenHashes.Halftime.flatStyleWrapper y ly key) ≤
+          ↑L * (1 / 2 ^ 63 - 1 / 2 ^ 128)
+'ProvenHashes.Halftime.flat_wrapper_word_cap' depends on axioms: [propext, Classical.choice, Quot.sound]
+ProvenHashes.Halftime.signatureBytes_injective : Function.Injective ProvenHashes.Halftime.signatureBytes
+'ProvenHashes.Halftime.signatureBytes_injective' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.lengthBytes_injective_below : ∀ {m n : ℕ},
+  m < 2 ^ 64 → n < 2 ^ 64 → ProvenHashes.Halftime.lengthBytes m = ProvenHashes.Halftime.lengthBytes n → m = n
+'ProvenHashes.Halftime.lengthBytes_injective_below' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.zeroPad_injective : ∀ {n capacity : ℕ},
+  n ≤ capacity → Function.Injective ProvenHashes.Halftime.zeroPad
+'ProvenHashes.Halftime.zeroPad_injective' depends on axioms: [propext, Quot.sound]
+@ProvenHashes.Halftime.paddedWords_injective : ∀ {n words : ℕ},
+  n ≤ words * 8 → Function.Injective ProvenHashes.Halftime.paddedWords
+'ProvenHashes.Halftime.paddedWords_injective' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.styleTailBlocks_le : ∀ {b bytes : ℕ}, 0 < b → ProvenHashes.Halftime.styleTailBlocks b bytes ≤ 18
+'ProvenHashes.Halftime.styleTailBlocks_le' depends on axioms: [propext, Quot.sound]
+@ProvenHashes.Halftime.styleTailWords_le : ∀ {b bytes : ℕ},
+  0 < b → ProvenHashes.Halftime.styleTailWords b bytes ≤ 18 * b
+'ProvenHashes.Halftime.styleTailWords_le' depends on axioms: [propext, Quot.sound]
+@ProvenHashes.Halftime.style_padding_capacity : ∀ {b bytes : ℕ},
+  0 < b →
+    bytes ≤ (ProvenHashes.Halftime.styleGroups b bytes * (18 * b) + ProvenHashes.Halftime.styleTailWords b bytes) * 8
+'ProvenHashes.Halftime.style_padding_capacity' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.parseStyle_injective : ∀ {b h roots bytes : ℕ},
+  0 < b →
+    ∀ (s : Fin roots → ProvenHashes.Halftime.TreeShape 8 h)
+      (order :
+        (i : Fin roots) × ProvenHashes.Halftime.LeafPath (s i) ≃ Fin (ProvenHashes.Halftime.styleGroups b bytes)),
+      Function.Injective (ProvenHashes.Halftime.parseStyle s order)
+'ProvenHashes.Halftime.parseStyle_injective' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.byteStyleCore_survival : ∀ {b bytes : ℕ} (hb0 : 0 < b) (hb : b ≤ 8)
+  (plan : ProvenHashes.Halftime.StyleSchedule (ProvenHashes.Halftime.styleGroups b bytes))
+  (x y : Fin bytes → ProvenHashes.Halftime.Byte),
+  x ≠ y →
+    ∀ (target : Fin 2 → ProvenHashes.Halftime.Word64),
+      (ProvenHashes.uniformProb fun key =>
+          ProvenHashes.Halftime.byteStyleCore hb0 hb plan x key -
+              ProvenHashes.Halftime.byteStyleCore hb0 hb plan y key =
+            target) ≤
+        ProvenHashes.Halftime.styleTwoBound (1 / 2 ^ 32) plan.height
+'ProvenHashes.Halftime.byteStyleCore_survival' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.byteStyleCore_no_groups : ∀ {b bytes : ℕ} (hb0 : 0 < b) (hb : b ≤ 8)
+  (plan : ProvenHashes.Halftime.StyleSchedule (ProvenHashes.Halftime.styleGroups b bytes)),
+  ProvenHashes.Halftime.styleGroups b bytes = 0 →
+    ∀ (x y : Fin bytes → ProvenHashes.Halftime.Byte),
+      x ≠ y →
+        ∀ (target : Fin 2 → ProvenHashes.Halftime.Word64),
+          (ProvenHashes.uniformProb fun key =>
+              ProvenHashes.Halftime.byteStyleCore hb0 hb plan x key -
+                  ProvenHashes.Halftime.byteStyleCore hb0 hb plan y key =
+                target) ≤
+            (1 / 2 ^ 32) ^ 2
+'ProvenHashes.Halftime.byteStyleCore_no_groups' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.byteStyleCore_word_cap : ∀ {b bytes L : ℕ} (hb0 : 0 < b) (hb : b ≤ 8)
+  (plan : ProvenHashes.Halftime.StyleSchedule (ProvenHashes.Halftime.styleGroups b bytes)),
+  1 ≤ L →
+    bytes ≤ 8 * L →
+      ∀ (x y : Fin bytes → ProvenHashes.Halftime.Byte),
+        x ≠ y →
+          (ProvenHashes.uniformProb fun key =>
+              ProvenHashes.Halftime.byteStyleCore hb0 hb plan x key =
+                ProvenHashes.Halftime.byteStyleCore hb0 hb plan y key) ≤
+            ↑L / 2 ^ 64
+'ProvenHashes.Halftime.byteStyleCore_word_cap' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.byteStyleHash_equal_length : ∀ {b : ℕ} (hb0 : 0 < b) (hb : b ≤ 8)
+  (plans : ProvenHashes.Halftime.StyleScheduleFamily b) (bytes : Fin (ProvenHashes.Halftime.styleByteLimit b))
+  (x y : Fin ↑bytes → ProvenHashes.Halftime.Byte),
+  (ProvenHashes.uniformProb fun key =>
+      ProvenHashes.Halftime.byteStyleHash hb0 hb plans ⟨bytes, x⟩ key =
+        ProvenHashes.Halftime.byteStyleHash hb0 hb plans ⟨bytes, y⟩ key) =
+    1 / 2 ^ 64 +
+      (1 - 1 / 2 ^ 64) *
+        ProvenHashes.uniformProb fun k =>
+          ProvenHashes.Halftime.byteStyleCore hb0 hb (plans bytes) x k =
+            ProvenHashes.Halftime.byteStyleCore hb0 hb (plans bytes) y k
+'ProvenHashes.Halftime.byteStyleHash_equal_length' depends on axioms: [propext, Classical.choice, Quot.sound]
+ProvenHashes.Halftime.styleByteLimit_lt_word : ∀ b ≤ 8, ProvenHashes.Halftime.styleByteLimit b < 2 ^ 64
+'ProvenHashes.Halftime.styleByteLimit_lt_word' depends on axioms: [propext, Quot.sound]
+@ProvenHashes.Halftime.byteStyleHash_unequal_length : ∀ {b : ℕ} (hb0 : 0 < b) (hb : b ≤ 8)
+  (plans : ProvenHashes.Halftime.StyleScheduleFamily b) (x y : ProvenHashes.Halftime.StyleMessage b),
+  x.fst ≠ y.fst →
+    (ProvenHashes.uniformProb fun key =>
+        ProvenHashes.Halftime.byteStyleHash hb0 hb plans x key =
+          ProvenHashes.Halftime.byteStyleHash hb0 hb plans y key) ≤
+      1 / 2 ^ 63 - 1 / 2 ^ 128
+'ProvenHashes.Halftime.byteStyleHash_unequal_length' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.byteStyleHash_normalized : ∀ {b : ℕ} (hb0 : 0 < b) (hb : b ≤ 8)
+  (plans : ProvenHashes.Halftime.StyleScheduleFamily b) (L : ℕ),
+  1 ≤ L →
+    ∀ (x y : ProvenHashes.Halftime.StyleMessage b),
+      x ≠ y →
+        ↑x.fst ≤ 8 * L →
+          ↑y.fst ≤ 8 * L →
+            (ProvenHashes.uniformProb fun key =>
+                ProvenHashes.Halftime.byteStyleHash hb0 hb plans x key =
+                  ProvenHashes.Halftime.byteStyleHash hb0 hb plans y key) ≤
+              ↑L * (1 / 2 ^ 63 - 1 / 2 ^ 128)
+'ProvenHashes.Halftime.byteStyleHash_normalized' depends on axioms: [propext, Classical.choice, Quot.sound]
+ProvenHashes.Halftime.stackCapacity_eight : ProvenHashes.Halftime.stackCapacity 8 = 19173960
+'ProvenHashes.Halftime.stackCapacity_eight' does not depend on any axioms
+ProvenHashes.Halftime.sum_eight_pow_succ : ∀ (xs : List ℕ),
+  (List.map (fun j => 8 ^ j) (List.map Nat.succ xs)).sum = 8 * (List.map (fun j => 8 ^ j) xs).sum
+'ProvenHashes.Halftime.sum_eight_pow_succ' depends on axioms: [propext, Quot.sound]
+ProvenHashes.Halftime.lazyHeights_spec : ∀ (f n : ℕ),
+  n ≤ ProvenHashes.Halftime.stackCapacity f →
+    (ProvenHashes.Halftime.lazyHeights f n).length ≤ 8 * f ∧
+      (List.map (fun j => 8 ^ j) (ProvenHashes.Halftime.lazyHeights f n)).sum = n ∧
+        ∀ j ∈ ProvenHashes.Halftime.lazyHeights f n, j < f
+'ProvenHashes.Halftime.lazyHeights_spec' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.le_maxRootHeight : ∀ {js : List ℕ} {j : ℕ}, j ∈ js → j ≤ ProvenHashes.Halftime.maxRootHeight js
+'ProvenHashes.Halftime.le_maxRootHeight' depends on axioms: [propext]
+@ProvenHashes.Halftime.maxRootHeight_le : ∀ {js : List ℕ} {h : ℕ},
+  (∀ j ∈ js, j ≤ h) → ProvenHashes.Halftime.maxRootHeight js ≤ h
+'ProvenHashes.Halftime.maxRootHeight_le' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.maxRootHeight_load : ∀ {js : List ℕ},
+  js ≠ [] → 8 ^ ProvenHashes.Halftime.maxRootHeight js ≤ (List.map (fun j => 8 ^ j) js).sum
+'ProvenHashes.Halftime.maxRootHeight_load' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.leafPath_card : ∀ {f h : ℕ} (s : ProvenHashes.Halftime.TreeShape f h),
+  Fintype.card (ProvenHashes.Halftime.LeafPath s) = ProvenHashes.Halftime.treeLeafCount s
+'ProvenHashes.Halftime.leafPath_card' depends on axioms: [propext, Classical.choice, Quot.sound]
+ProvenHashes.Halftime.fullShape_count : ∀ (h : ℕ),
+  ProvenHashes.Halftime.treeLeafCount (ProvenHashes.Halftime.fullShape h) = 8 ^ h
+'ProvenHashes.Halftime.fullShape_count' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.raiseShape_count : ∀ {f h : ℕ} (s : ProvenHashes.Halftime.TreeShape f h) (extra : ℕ),
+  ProvenHashes.Halftime.treeLeafCount (ProvenHashes.Halftime.raiseShape s extra) = ProvenHashes.Halftime.treeLeafCount s
+'ProvenHashes.Halftime.raiseShape_count' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.treeLeafCount_cast : ∀ {f a b : ℕ} (he : a = b) (s : ProvenHashes.Halftime.TreeShape f a),
+  ProvenHashes.Halftime.treeLeafCount (he ▸ s) = ProvenHashes.Halftime.treeLeafCount s
+'ProvenHashes.Halftime.treeLeafCount_cast' depends on axioms: [propext, Classical.choice, Quot.sound]
+ProvenHashes.Halftime.paddedFull_count : ∀ (h j : ℕ) (hj : j ≤ h),
+  ProvenHashes.Halftime.treeLeafCount (ProvenHashes.Halftime.paddedFull h j hj) = 8 ^ j
+'ProvenHashes.Halftime.paddedFull_count' depends on axioms: [propext, Classical.choice, Quot.sound]
+ProvenHashes.Halftime.list_eight_pow_sum : ∀ (xs : List ℕ), ∑ i, 8 ^ xs.get i = (List.map (fun j => 8 ^ j) xs).sum
+'ProvenHashes.Halftime.list_eight_pow_sum' depends on axioms: [propext, Classical.choice, Quot.sound]
+ProvenHashes.Halftime.lazyShapes_card : ∀ n ≤ 19173960,
+  Fintype.card
+      ((i : Fin (ProvenHashes.Halftime.lazyHeights 8 n).length) ×
+        ProvenHashes.Halftime.LeafPath (ProvenHashes.Halftime.lazyShapes n i)) =
+    n
+'ProvenHashes.Halftime.lazyShapes_card' depends on axioms: [propext, Classical.choice, Quot.sound]
+@ProvenHashes.Halftime.styleGroups_stack_safe : ∀ {b : ℕ},
+  0 < b →
+    ∀ (bytes : Fin (ProvenHashes.Halftime.styleByteLimit b)), ProvenHashes.Halftime.styleGroups b ↑bytes ≤ 19173960
+'ProvenHashes.Halftime.styleGroups_stack_safe' depends on axioms: [propext, Classical.choice, Quot.sound]
+ProvenHashes.Halftime.lazySchedule_height_le_seven : ∀ (n : ℕ) (hn : n ≤ 19173960),
+  (ProvenHashes.Halftime.lazySchedule n hn).height ≤ 7
+'ProvenHashes.Halftime.lazySchedule_height_le_seven' depends on axioms: [propext, Classical.choice, Quot.sound]
+ProvenHashes.Halftime.styleByteLimits : ProvenHashes.Halftime.styleByteLimit 1 = 2761050384 ∧
+  ProvenHashes.Halftime.styleByteLimit 2 = 5522100768 ∧
+    ProvenHashes.Halftime.styleByteLimit 4 = 11044201536 ∧ ProvenHashes.Halftime.styleByteLimit 8 = 22088403072
+'ProvenHashes.Halftime.styleByteLimits' does not depend on any axioms
+@ProvenHashes.Halftime.modeledStyleHash_normalized : ∀ {b : ℕ} (hb0 : 0 < b) (hb : b ≤ 8) (L : ℕ),
+  1 ≤ L →
+    ∀ (x y : ProvenHashes.Halftime.StyleMessage b),
+      x ≠ y →
+        ↑x.fst ≤ 8 * L →
+          ↑y.fst ≤ 8 * L →
+            (ProvenHashes.uniformProb fun key =>
+                ProvenHashes.Halftime.modeledStyleHash hb0 hb x key =
+                  ProvenHashes.Halftime.modeledStyleHash hb0 hb y key) ≤
+              ↑L * (1 / 2 ^ 63 - 1 / 2 ^ 128)
+'ProvenHashes.Halftime.modeledStyleHash_normalized' depends on axioms: [propext, Classical.choice, Quot.sound]

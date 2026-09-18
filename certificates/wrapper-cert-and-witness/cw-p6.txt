@@ -1,0 +1,49 @@
+148 CARTER AND WEGMAN
+
+Note that a similar argument shows that the probability that C(f, R) is greater than
+# times its expected cost is also less than 1/t.
+
+These are often not particularly useful bounds on the probability that a cost is
+intolerable. They can be improved by two methods. Firstly, a particular class of hash
+functions can be analyzed in more detail. For instance, for the classes H, and Hy presented
+in the next section, Markowsky [7] has calculated bounds on the second and fourth
+moments of the set of costs. These are used to show that when | S'|/| Bj is about 1,
+the probability that a cost (of a request or sequence of requests) is greater than fy is
+less than 1/¢* and also less than 11/¢4.
+
+A second way to insure that no cost will be intolerable is to change the collision
+resolution strategy. For instance, suppose balanced trees ([I], pp. 145-152) are used
+in place of the linked lists mentioned earlier. When | S'|/| B| is about 1, this makes
+a small improvement in the expected value of 5,(x, S), and may not be worth the added
+bookkeeping if one cares only about the average cost. However, using balanced trees
+nakes an exponential reduction in the probability that a request is intolerably expensive.
+In order for a request involving the key x to require searching more than ¢ levels of the
+trec, 8,(x, S) would have to have at least 2' elements. Assuming | S |/|_B| = 1, this
+means that the probability of a request requiring more than ¢ steps is no more than
+1/2+, and if f is chosen from H, or Hg , the probability is less than 1/24.
+
+We conclude this section by showing that although our approach to hashing achieves
+independence from the choice of input, it does not entail a poorer expected performance
+than the traditional approach. More precisely, we show:
+
+Proposition 5. Given any single hash function, let E, be the expected cost with respect
+to that function of a random request after k random insertions have been made. Let E, be
+the expected cost (averaging over a universal, class of hash functions) of any request after
+any k insertions have been made. Then E, > (1 — «) E, where « =| B|/| Al.
+
+Proof. Leta =| A| and =| B|. Let S be the set of elements of A which were
+inserted prior to the request on the element x. Proposition 2 implies that F, <1 + | S |/b.
+We will show that EZ, > 1+ |S ((1/6 — 1/a), assuming that S and x were chosen
+randomly. A simple calculation then verifies that E, > (1 — d/a) E,.
+
+In the proof of Proposition 1, it was shown that 8,(4, A) > a*(1/b — 1/a) for any
+hash function f. Thus if « and y are chosen at random from A, then Expected (8,(x, y)) =
+(1/a*) 8,(A, A) > 1/b — fa. Recall that 5,(x, S) = Dyes 84(x, y). Since the expectation
+of a sum is the sum of the individual expectations, Expected (4,(x, S)) > | S |(1/o — I/a).
+Thus, By > 1+) 5((/b— 1a). W
+
+Some UNIVERSAL, CLASSES
+The first class of universal, hash functions we present, H, , is suitable for applications
+
+where the bit strings which represent the keys can conveniently be multiplied by the
+computer.

@@ -1,0 +1,15 @@
+✔ [7379/7384] Built ProvenHashes.Halftime.StyleLayout (10s)
+✔ [7380/7384] Built ProvenHashes.Halftime.StyleBytes (4.3s)
+✔ [7381/7384] Built ProvenHashes.Halftime.StyleModel (4.2s)
+⚠ [7382/7384] Built ProvenHashes.Halftime.StyleSchedule (3.9s)
+warning: ProvenHashes/Halftime/StyleSchedule.lean:157:45: This simp argument is unused:
+  ih
+
+Hint: Omit it from the simp argument list.
+  simp [Fin.sum_univ_succ,̵ ̵i̵h̵]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+✔ [7383/7384] Built ProvenHashes (3.1s)
+Build completed successfully (7384 jobs).
+Generated audit for 237 Halftime proof declarations.
+Halftime axiom audit passed: 237 proof declarations; only standard Lean axioms.

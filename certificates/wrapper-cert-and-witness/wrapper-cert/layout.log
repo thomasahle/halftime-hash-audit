@@ -1,0 +1,4 @@
+b=1 finalizer_first=659 finalizer_last=805 distinct_words=147 output_tables_start=2048
+b=2 finalizer_first=659 finalizer_last=952 distinct_words=294 output_tables_start=2048
+b=4 finalizer_first=659 finalizer_last=1246 distinct_words=588 output_tables_start=2048
+b=8 finalizer_first=659 finalizer_last=1834 distinct_words=1176 output_tables_start=2048

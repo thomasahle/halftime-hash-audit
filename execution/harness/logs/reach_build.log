@@ -1,0 +1,17 @@
+In file included from reach.cpp:6:
+halftime-hash.hpp: In instantiation of 'struct halftime_hash::advanced::{anonymous}::RepeatWrapper<halftime_hash::advanced::{anonymous}::BlockWrapper128, 4>':
+halftime-hash.hpp:849:9:   required from 'void halftime_hash::advanced::{anonymous}::Hash(const uint64_t*, const char*, size_t, uint64_t*) [with BlockWrapper = halftime_hash::advanced::{anonymous}::RepeatWrapper<halftime_hash::advanced::{anonymous}::BlockWrapper128, 4>; unsigned int dimension = 5; unsigned int in_width = 3; unsigned int encoded_dimension = 9; unsigned int out_width = 5; uint64_t = long unsigned int; size_t = long unsigned int]'
+halftime-hash.hpp:1065:1:   required from 'void halftime_hash::advanced::V4Sse2(const uint64_t*, const char*, size_t, uint64_t*) [with unsigned int dimension = 5; unsigned int in_width = 3; unsigned int encoded_dimension = 9; unsigned int out_width = 5; uint64_t = long unsigned int; size_t = long unsigned int]'
+halftime-hash.hpp:1117:1:   required from here
+halftime-hash.hpp:876:9: warning: ignoring attributes on template argument 'halftime_hash::advanced::{anonymous}::BlockWrapper128::Block' {aka '__m128i'} [-Wignored-attributes]
+  876 |   using Block = Repeat<InnerBlock, count>;
+      |         ^~~~~
+halftime-hash.hpp: In instantiation of 'struct halftime_hash::advanced::{anonymous}::RepeatWrapper<halftime_hash::advanced::{anonymous}::BlockWrapper128, 2>':
+halftime-hash.hpp:849:9:   required from 'void halftime_hash::advanced::{anonymous}::Hash(const uint64_t*, const char*, size_t, uint64_t*) [with BlockWrapper = halftime_hash::advanced::{anonymous}::RepeatWrapper<halftime_hash::advanced::{anonymous}::BlockWrapper128, 2>; unsigned int dimension = 5; unsigned int in_width = 3; unsigned int encoded_dimension = 9; unsigned int out_width = 5; uint64_t = long unsigned int; size_t = long unsigned int]'
+halftime-hash.hpp:1064:1:   required from 'void halftime_hash::advanced::V3Sse2(const uint64_t*, const char*, size_t, uint64_t*) [with unsigned int dimension = 5; unsigned int in_width = 3; unsigned int encoded_dimension = 9; unsigned int out_width = 5; uint64_t = long unsigned int; size_t = long unsigned int]'
+halftime-hash.hpp:1118:1:   required from here
+halftime-hash.hpp:876:9: warning: ignoring attributes on template argument 'halftime_hash::advanced::{anonymous}::BlockWrapper128::Block' {aka '__m128i'} [-Wignored-attributes]
+halftime-hash.hpp: In static member function 'static halftime_hash::advanced::{anonymous}::EhcBadger<BlockWrapper, dimension, in_width, encoded_dimension, out_width, fanout>::Block halftime_hash::advanced::{anonymous}::EhcBadger<BlockWrapper, dimension, in_width, encoded_dimension, out_width, fanout>::MixOne(halftime_hash::advanced::{anonymous}::EhcBadger<BlockWrapper, dimension, in_width, encoded_dimension, out_width, fanout>::Block, halftime_hash::advanced::{anonymous}::EhcBadger<BlockWrapper, dimension, in_width, encoded_dimension, out_width, fanout>::Block, uint64_t) [with BlockWrapper = halftime_hash::advanced::{anonymous}::RepeatWrapper<halftime_hash::advanced::{anonymous}::BlockWrapper128, 4>; unsigned int dimension = 5; unsigned int in_width = 3; unsigned int encoded_dimension = 9; unsigned int out_width = 5; unsigned int fanout = 8]':
+halftime-hash.hpp:469:16: note: the ABI for passing parameters with 64-byte alignment has changed in GCC 4.6
+  469 |   static Block MixOne(Block accum, Block input, uint64_t entropy) {
+      |                ^~~~~~

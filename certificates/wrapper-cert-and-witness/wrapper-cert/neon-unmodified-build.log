@@ -1,0 +1,139 @@
+In file included from review-support/wrapper-cert/include-only.cpp:1:
+review-support/wrapper-cert/../../halftime-current.hpp:1124:1: error: use of undeclared identifier 'V4Neon'
+ 1124 | SPECIALIZE_4(4, Neon)
+      | ^
+review-support/wrapper-cert/../../halftime-current.hpp:1096:3: note: expanded from macro 'SPECIALIZE_4'
+ 1096 |   SPECIALIZE(version, isa, 5, 5, 3, 9)  \
+      |   ^
+review-support/wrapper-cert/../../halftime-current.hpp:1091:12: note: expanded from macro 'SPECIALIZE'
+ 1091 |     return V##version##isa<dimension, in_width, encoded_dimension, out_width>(       \
+      |            ^
+<scratch space>:236:1: note: expanded from here
+  236 | V4Neon
+      | ^
+In file included from review-support/wrapper-cert/include-only.cpp:1:
+review-support/wrapper-cert/../../halftime-current.hpp:1124:1: error: use of undeclared identifier 'V4Neon'
+review-support/wrapper-cert/../../halftime-current.hpp:1097:3: note: expanded from macro 'SPECIALIZE_4'
+ 1097 |   SPECIALIZE(version, isa, 4, 7, 3, 10) \
+      |   ^
+review-support/wrapper-cert/../../halftime-current.hpp:1091:12: note: expanded from macro 'SPECIALIZE'
+ 1091 |     return V##version##isa<dimension, in_width, encoded_dimension, out_width>(       \
+      |            ^
+<scratch space>:239:1: note: expanded from here
+  239 | V4Neon
+      | ^
+In file included from review-support/wrapper-cert/include-only.cpp:1:
+review-support/wrapper-cert/../../halftime-current.hpp:1124:1: error: use of undeclared identifier 'V4Neon'
+review-support/wrapper-cert/../../halftime-current.hpp:1098:3: note: expanded from macro 'SPECIALIZE_4'
+ 1098 |   SPECIALIZE(version, isa, 3, 7, 3, 9)  \
+      |   ^
+review-support/wrapper-cert/../../halftime-current.hpp:1091:12: note: expanded from macro 'SPECIALIZE'
+ 1091 |     return V##version##isa<dimension, in_width, encoded_dimension, out_width>(       \
+      |            ^
+<scratch space>:242:1: note: expanded from here
+  242 | V4Neon
+      | ^
+In file included from review-support/wrapper-cert/include-only.cpp:1:
+review-support/wrapper-cert/../../halftime-current.hpp:1124:1: error: use of undeclared identifier 'V4Neon'
+review-support/wrapper-cert/../../halftime-current.hpp:1099:3: note: expanded from macro 'SPECIALIZE_4'
+ 1099 |   SPECIALIZE(version, isa, 2, 6, 3, 7)
+      |   ^
+review-support/wrapper-cert/../../halftime-current.hpp:1091:12: note: expanded from macro 'SPECIALIZE'
+ 1091 |     return V##version##isa<dimension, in_width, encoded_dimension, out_width>(       \
+      |            ^
+<scratch space>:245:1: note: expanded from here
+  245 | V4Neon
+      | ^
+In file included from review-support/wrapper-cert/include-only.cpp:1:
+review-support/wrapper-cert/../../halftime-current.hpp:1125:1: error: use of undeclared identifier 'V3Neon'
+ 1125 | SPECIALIZE_4(3, Neon)
+      | ^
+review-support/wrapper-cert/../../halftime-current.hpp:1096:3: note: expanded from macro 'SPECIALIZE_4'
+ 1096 |   SPECIALIZE(version, isa, 5, 5, 3, 9)  \
+      |   ^
+review-support/wrapper-cert/../../halftime-current.hpp:1091:12: note: expanded from macro 'SPECIALIZE'
+ 1091 |     return V##version##isa<dimension, in_width, encoded_dimension, out_width>(       \
+      |            ^
+<scratch space>:248:1: note: expanded from here
+  248 | V3Neon
+      | ^
+In file included from review-support/wrapper-cert/include-only.cpp:1:
+review-support/wrapper-cert/../../halftime-current.hpp:1125:1: error: use of undeclared identifier 'V3Neon'
+review-support/wrapper-cert/../../halftime-current.hpp:1097:3: note: expanded from macro 'SPECIALIZE_4'
+ 1097 |   SPECIALIZE(version, isa, 4, 7, 3, 10) \
+      |   ^
+review-support/wrapper-cert/../../halftime-current.hpp:1091:12: note: expanded from macro 'SPECIALIZE'
+ 1091 |     return V##version##isa<dimension, in_width, encoded_dimension, out_width>(       \
+      |            ^
+<scratch space>:251:1: note: expanded from here
+  251 | V3Neon
+      | ^
+In file included from review-support/wrapper-cert/include-only.cpp:1:
+review-support/wrapper-cert/../../halftime-current.hpp:1125:1: error: use of undeclared identifier 'V3Neon'
+review-support/wrapper-cert/../../halftime-current.hpp:1098:3: note: expanded from macro 'SPECIALIZE_4'
+ 1098 |   SPECIALIZE(version, isa, 3, 7, 3, 9)  \
+      |   ^
+review-support/wrapper-cert/../../halftime-current.hpp:1091:12: note: expanded from macro 'SPECIALIZE'
+ 1091 |     return V##version##isa<dimension, in_width, encoded_dimension, out_width>(       \
+      |            ^
+<scratch space>:254:1: note: expanded from here
+  254 | V3Neon
+      | ^
+In file included from review-support/wrapper-cert/include-only.cpp:1:
+review-support/wrapper-cert/../../halftime-current.hpp:1125:1: error: use of undeclared identifier 'V3Neon'
+review-support/wrapper-cert/../../halftime-current.hpp:1099:3: note: expanded from macro 'SPECIALIZE_4'
+ 1099 |   SPECIALIZE(version, isa, 2, 6, 3, 7)
+      |   ^
+review-support/wrapper-cert/../../halftime-current.hpp:1091:12: note: expanded from macro 'SPECIALIZE'
+ 1091 |     return V##version##isa<dimension, in_width, encoded_dimension, out_width>(       \
+      |            ^
+<scratch space>:257:1: note: expanded from here
+  257 | V3Neon
+      | ^
+In file included from review-support/wrapper-cert/include-only.cpp:1:
+review-support/wrapper-cert/../../halftime-current.hpp:1126:1: error: use of undeclared identifier 'V2Neon'
+ 1126 | SPECIALIZE_4(2, Neon)
+      | ^
+review-support/wrapper-cert/../../halftime-current.hpp:1096:3: note: expanded from macro 'SPECIALIZE_4'
+ 1096 |   SPECIALIZE(version, isa, 5, 5, 3, 9)  \
+      |   ^
+review-support/wrapper-cert/../../halftime-current.hpp:1091:12: note: expanded from macro 'SPECIALIZE'
+ 1091 |     return V##version##isa<dimension, in_width, encoded_dimension, out_width>(       \
+      |            ^
+<scratch space>:260:1: note: expanded from here
+  260 | V2Neon
+      | ^
+In file included from review-support/wrapper-cert/include-only.cpp:1:
+review-support/wrapper-cert/../../halftime-current.hpp:1126:1: error: use of undeclared identifier 'V2Neon'
+review-support/wrapper-cert/../../halftime-current.hpp:1097:3: note: expanded from macro 'SPECIALIZE_4'
+ 1097 |   SPECIALIZE(version, isa, 4, 7, 3, 10) \
+      |   ^
+review-support/wrapper-cert/../../halftime-current.hpp:1091:12: note: expanded from macro 'SPECIALIZE'
+ 1091 |     return V##version##isa<dimension, in_width, encoded_dimension, out_width>(       \
+      |            ^
+<scratch space>:263:1: note: expanded from here
+  263 | V2Neon
+      | ^
+In file included from review-support/wrapper-cert/include-only.cpp:1:
+review-support/wrapper-cert/../../halftime-current.hpp:1126:1: error: use of undeclared identifier 'V2Neon'
+review-support/wrapper-cert/../../halftime-current.hpp:1098:3: note: expanded from macro 'SPECIALIZE_4'
+ 1098 |   SPECIALIZE(version, isa, 3, 7, 3, 9)  \
+      |   ^
+review-support/wrapper-cert/../../halftime-current.hpp:1091:12: note: expanded from macro 'SPECIALIZE'
+ 1091 |     return V##version##isa<dimension, in_width, encoded_dimension, out_width>(       \
+      |            ^
+<scratch space>:266:1: note: expanded from here
+  266 | V2Neon
+      | ^
+In file included from review-support/wrapper-cert/include-only.cpp:1:
+review-support/wrapper-cert/../../halftime-current.hpp:1126:1: error: use of undeclared identifier 'V2Neon'
+review-support/wrapper-cert/../../halftime-current.hpp:1099:3: note: expanded from macro 'SPECIALIZE_4'
+ 1099 |   SPECIALIZE(version, isa, 2, 6, 3, 7)
+      |   ^
+review-support/wrapper-cert/../../halftime-current.hpp:1091:12: note: expanded from macro 'SPECIALIZE'
+ 1091 |     return V##version##isa<dimension, in_width, encoded_dimension, out_width>(       \
+      |            ^
+<scratch space>:269:1: note: expanded from here
+  269 | V2Neon
+      | ^
+12 errors generated.

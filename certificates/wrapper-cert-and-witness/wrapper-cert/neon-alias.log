@@ -1,0 +1,15 @@
+entropy_bytes=70928
+build=NEON with dispatch-name aliases (not unmodified NEON dispatch)
+Encode2 nonzero_binary_messages=262143 min_symbol_distance=2 Encode3_witness_distance=1
+Encode3 b=1 bytes=168 changed_word=6 fibre_checks=7680 favourable_full_collisions=1280
+Encode3 b=2 bytes=336 changed_word=12 fibre_checks=7680 favourable_full_collisions=1280
+Encode3 b=4 bytes=672 changed_word=24 fibre_checks=7680 favourable_full_collisions=1280
+Encode3 b=8 bytes=1344 changed_word=48 fibre_checks=7680 favourable_full_collisions=1280
+fibre formula: EHC equal iff high32(key[6])=0; 2^32 / 2^64 word keys, arbitrary remaining keys
+deterministic_digest=4cfca77716c818c2
+Style64 checked_lengths=13
+Style128 checked_lengths=13
+Style256 checked_lengths=13
+Style512 checked_lengths=13
+wrapper_digest=7a839fa25ab96053
+PASS

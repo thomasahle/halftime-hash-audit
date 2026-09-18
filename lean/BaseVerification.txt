@@ -1,0 +1,10 @@
+⚠ [7382/7384] Replayed ProvenHashes.Halftime.StyleSchedule
+warning: ProvenHashes/Halftime/StyleSchedule.lean:157:45: This simp argument is unused:
+  ih
+
+Hint: Omit it from the simp argument list.
+  simp [Fin.sum_univ_succ,̵ ̵i̵h̵]
+
+Note: This linter can be disabled with `set_option linter.unusedSimpArgs false`
+Build completed successfully (7384 jobs).
+Build and axiom audit passed (57 proof declarations with axiom lists).

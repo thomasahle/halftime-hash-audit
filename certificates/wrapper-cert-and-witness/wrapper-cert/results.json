@@ -1,0 +1,348 @@
+{
+  "sources": {
+    "halftime-current.hpp": "7ef5dd48f54537b430f85bc1867b23a93551ab1c56415cfcef362d1651956cc3",
+    "halftime-current.tex": "3debc6124599a29b6df9839fe43214f67b2dbb057cd3f0a8033f6db5b1903c39",
+    "AUDIT_REVIEW.md": "3a44f61c664655eae54335d978d6db850f3a2b6ba3ca50d896c019e398810393"
+  },
+  "encode2": {
+    "matrix": [
+      [
+        1,
+        0,
+        1,
+        1,
+        2,
+        1,
+        4
+      ],
+      [
+        0,
+        1,
+        1,
+        2,
+        1,
+        4,
+        1
+      ]
+    ],
+    "distance": 2,
+    "exact_binary_codeword_weight_histogram": {
+      "2": 147,
+      "3": 1470,
+      "4": 10535,
+      "5": 44100,
+      "6": 102949,
+      "7": 102942
+    },
+    "nonzero_codewords": 262143,
+    "minor_certificates": 21,
+    "max_singleton_kernel_sum": 5,
+    "max_full_kernel": 4,
+    "core_bound": "2^-64 below a leaf; (h+2)(h+5)2^-64 otherwise"
+  },
+  "layout": [
+    {
+      "style": 64,
+      "lanes": 1,
+      "leaf_bytes": 144,
+      "max_complete_leaves": 19173960,
+      "exclusive_byte_limit": 2761050384,
+      "largest_integer_word_cap": 345131297,
+      "core_word_start": 512,
+      "finalizer_word_start": 659,
+      "core_word_end_exclusive": 806,
+      "output_table_word_start": 2048,
+      "score_bits": 63,
+      "score_candidates": [
+        [
+          1,
+          2
+        ],
+        [
+          18,
+          11
+        ],
+        [
+          144,
+          19
+        ],
+        [
+          1152,
+          29
+        ],
+        [
+          9216,
+          41
+        ],
+        [
+          73728,
+          55
+        ],
+        [
+          589824,
+          71
+        ],
+        [
+          4718592,
+          89
+        ],
+        [
+          37748736,
+          109
+        ],
+        [
+          301989888,
+          131
+        ]
+      ]
+    },
+    {
+      "style": 128,
+      "lanes": 2,
+      "leaf_bytes": 288,
+      "max_complete_leaves": 19173960,
+      "exclusive_byte_limit": 5522100768,
+      "largest_integer_word_cap": 690262595,
+      "core_word_start": 512,
+      "finalizer_word_start": 659,
+      "core_word_end_exclusive": 953,
+      "output_table_word_start": 2048,
+      "score_bits": 63,
+      "score_candidates": [
+        [
+          1,
+          2
+        ],
+        [
+          36,
+          11
+        ],
+        [
+          288,
+          19
+        ],
+        [
+          2304,
+          29
+        ],
+        [
+          18432,
+          41
+        ],
+        [
+          147456,
+          55
+        ],
+        [
+          1179648,
+          71
+        ],
+        [
+          9437184,
+          89
+        ],
+        [
+          75497472,
+          109
+        ],
+        [
+          603979776,
+          131
+        ]
+      ]
+    },
+    {
+      "style": 256,
+      "lanes": 4,
+      "leaf_bytes": 576,
+      "max_complete_leaves": 19173960,
+      "exclusive_byte_limit": 11044201536,
+      "largest_integer_word_cap": 1380525191,
+      "core_word_start": 512,
+      "finalizer_word_start": 659,
+      "core_word_end_exclusive": 1247,
+      "output_table_word_start": 2048,
+      "score_bits": 63,
+      "score_candidates": [
+        [
+          1,
+          2
+        ],
+        [
+          72,
+          11
+        ],
+        [
+          576,
+          19
+        ],
+        [
+          4608,
+          29
+        ],
+        [
+          36864,
+          41
+        ],
+        [
+          294912,
+          55
+        ],
+        [
+          2359296,
+          71
+        ],
+        [
+          18874368,
+          89
+        ],
+        [
+          150994944,
+          109
+        ],
+        [
+          1207959552,
+          131
+        ]
+      ]
+    },
+    {
+      "style": 512,
+      "lanes": 8,
+      "leaf_bytes": 1152,
+      "max_complete_leaves": 19173960,
+      "exclusive_byte_limit": 22088403072,
+      "largest_integer_word_cap": 2761050383,
+      "core_word_start": 512,
+      "finalizer_word_start": 659,
+      "core_word_end_exclusive": 1835,
+      "output_table_word_start": 2048,
+      "score_bits": 63,
+      "score_candidates": [
+        [
+          1,
+          2
+        ],
+        [
+          144,
+          11
+        ],
+        [
+          1152,
+          19
+        ],
+        [
+          9216,
+          29
+        ],
+        [
+          73728,
+          41
+        ],
+        [
+          589824,
+          55
+        ],
+        [
+          4718592,
+          71
+        ],
+        [
+          37748736,
+          89
+        ],
+        [
+          301989888,
+          109
+        ],
+        [
+          2415919104,
+          131
+        ]
+      ]
+    }
+  ],
+  "entropy_words": 8866,
+  "entropy_bytes": 70928,
+  "encode3_witness": {
+    "zero_message": true,
+    "differing_word_index": "6*b",
+    "new_word_value": 1,
+    "byte_length": "168*b",
+    "key_condition": "high32(core_key[6]) = 0",
+    "key_word_fibres": [
+      {
+        "low_half_count": 4294967295,
+        "difference_factor": 1,
+        "gcd_with_2pow64": 1,
+        "high_half_zero_count": 1,
+        "colliding_word_keys": 4294967295
+      },
+      {
+        "low_half_count": 1,
+        "difference_factor": -4294967295,
+        "gcd_with_2pow64": 1,
+        "high_half_zero_count": 1,
+        "colliding_word_keys": 1
+      }
+    ],
+    "ehc_collision_probability": "1/4294967296",
+    "full_core_collision_probability_lower_bound": "1/4294967296",
+    "full_core_probability_is_not_claimed_exact": true,
+    "claimed_paper_bound_at_h0": "65/79228162514264337593543950336",
+    "lower_bound_to_claim_ratio": "18446744073709551616/65",
+    "small_word_exact_checks": [
+      {
+        "half_bits": 1,
+        "total_keys": 4,
+        "collisions": 2
+      },
+      {
+        "half_bits": 2,
+        "total_keys": 16,
+        "collisions": 4
+      },
+      {
+        "half_bits": 3,
+        "total_keys": 64,
+        "collisions": 8
+      },
+      {
+        "half_bits": 4,
+        "total_keys": 256,
+        "collisions": 16
+      },
+      {
+        "half_bits": 5,
+        "total_keys": 1024,
+        "collisions": 32
+      },
+      {
+        "half_bits": 6,
+        "total_keys": 4096,
+        "collisions": 64
+      },
+      {
+        "half_bits": 7,
+        "total_keys": 16384,
+        "collisions": 128
+      },
+      {
+        "half_bits": 8,
+        "total_keys": 65536,
+        "collisions": 256
+      }
+    ]
+  },
+  "short_wrapper_pair": {
+    "byte_length": 1,
+    "messages": [
+      "00",
+      "01"
+    ],
+    "core_collision_probability": "1/18446744073709551616",
+    "exact_wrapper_collision_probability": "36893488147419103231/340282366920938463463374607431768211456",
+    "sharp_family_score": "64-log2(2-2^-64)",
+    "coarse_certified_score_bits": 63
+  }
+}
