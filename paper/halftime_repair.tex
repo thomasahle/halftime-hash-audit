@@ -1,0 +1,474 @@
+\begin{filecontents*}[overwrite]{halftime_repair.bib}
+@misc{apple,
+ author={Apple, Jim},
+ title={{HalftimeHash}: Modern Hashing without 64-bit Multipliers or Finite Fields},
+ year={2021}, howpublished={arXiv:2104.08865v2},
+ url={https://arxiv.org/abs/2104.08865v2}}
+@inproceedings{umac,
+ author={Black, John and Halevi, Shai and Krawczyk, Hugo and Krovetz, Ted and Rogaway, Phillip},
+ title={{UMAC}: Fast and Secure Message Authentication},
+ booktitle={Advances in Cryptology---CRYPTO '99},
+ series={Lecture Notes in Computer Science},volume={1666},pages={216--233},
+ publisher={Springer},year={1999},doi={10.1007/3-540-48405-1_14}}
+@misc{khuong,
+ author={Khuong, Paul},
+ title={{UMASH}: a fast almost universal 64-bit string hash},
+ year={2022},note={Literate whitepaper, 23 February 2022},
+ howpublished={\url{https://github.com/backtrace-labs/umash/blob/master/umash.pdf}}}
+@misc{audit,
+ author={Ahle, Thomas Dybdahl and {Claude}},
+ title={Independent analysis of the published hash collision proofs},
+ year={2026},month={September},
+ howpublished={\url{https://thomasahle.com/blog/adversarial-examples-for-hashes/records/AUDIT_REVIEW.md}}}
+@misc{proof,
+ author={Ahle, Thomas Dybdahl and {Claude}},
+ title={{HalftimeHash} wrapper and {Encode3} certificates},
+ year={2026},month={September},
+ howpublished={\url{https://thomasahle.com/blog/adversarial-examples-for-hashes/records/halftime/PROOF.md}}}
+@misc{second,
+ author={Ahle, Thomas Dybdahl and {Claude}},
+ title={Independent review of the {HalftimeHash} paper: algebraic corrections},
+ year={2026},month={September},
+ howpublished={Companion record: \path{halftime/second_review_summary.md}}}
+@misc{fourth,
+ author={Ahle, Thomas Dybdahl and {Claude}},
+ title={Repaired {HalftimeHash} theorem and implementation bounds},
+ year={2026},month={September},
+ howpublished={Companion record: \path{halftime/fourth_review_summary.md}}}
+@misc{fixed,
+ author={Ahle, Thomas Dybdahl and {Claude}},
+ title={The fixed {HalftimeHash24} theorem},
+ year={2026},month={September},
+ howpublished={\url{https://thomasahle.com/blog/adversarial-examples-for-hashes/records/halftime/THEOREM.md}},
+ note={Implementation and exact certificates in the same directory}}
+@misc{lean,
+ author={Ahle, Thomas Dybdahl and {Claude}},
+ title={{HalftimeHash} formalization: integer arithmetic, matrices, forests, and byte input},
+ year={2026},month={September},
+ howpublished={Companion record: \path{halftime/LEAN_HALFTIME_STATUS.md}}}
+\end{filecontents*}
+\documentclass[11pt,a4paper]{article}
+\usepackage[T1]{fontenc}\usepackage[utf8]{inputenc}
+\usepackage{lmodern,amsmath,amssymb,amsthm,mathtools,booktabs,array,longtable}
+\usepackage[margin=24mm,headheight=14pt]{geometry}
+\usepackage{microtype,xcolor,url,fancyhdr}
+\usepackage[colorlinks=true,allcolors=blue!40!black,breaklinks=true]{hyperref}
+\hypersetup{pdftitle={HalftimeHash: a repaired collision bound and a refuted variant},pdfauthor={Thomas Dybdahl Ahle and Claude}}
+\pagestyle{fancy}\fancyhf{}\fancyhead[L]{\small HalftimeHash: a repaired collision bound}\fancyhead[R]{\small September 2026}\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0.3pt}
+\newtheorem{theorem}{Theorem}[section]\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{proposition}[theorem]{Proposition}\newtheorem{corollary}[theorem]{Corollary}
+\newcommand{\Z}{\mathbb Z}\newcommand{\F}{\mathbb F}
+\newcommand{\Prb}{\mathop{\rm Pr}}\newcommand{\E}{\mathbb E}
+\newcommand{\eps}{\varepsilon}\newcommand{\NH}{\operatorname{NH}}
+\newcommand{\val}{\nu_2}\newcommand{\xor}{\mathbin\oplus}
+\newcommand{\ceil}[1]{\left\lceil#1\right\rceil}\newcommand{\floor}[1]{\left\lfloor#1\right\rfloor}
+\setlength{\emergencystretch}{3em}\setlength{\parskip}{2pt}
+\title{HalftimeHash: a repaired collision bound\\and a refuted variant}
+\author{Thomas Dybdahl Ahle and Claude}\date{September 2026}
+\begin{document}
+\maketitle
+\begin{abstract}
+The published HalftimeHash composition proof treats a difference between vectors as a difference in every coordinate. That implication fails, so its multiplication of coordinate-tree collision bounds is unjustified. We repair the intended construction using integer matrix fibres and a projection-polynomial inequality. For a distance-$k$ encoder and maximum determinant valuation $t$, the resulting bound is $2^{-32k}(h+2)^{k-1}(h+1+2^t)$ at forest height $h$. It gives $6804\cdot2^{-96}$, or $83.27$ collision bits, for the intended three-word construction at height 16. The shipped \texttt{Encode3} has distance one instead of three: an explicit equal-length pair collides in the reachable 24-byte core with probability at least $2^{-32}$. The four 64-bit Style wrappers use a valid distance-two encoder; their overlapping key layout admits the sharp length-normalized coefficient $2^{-63}-2^{-128}$ on explicit finite domains. A corrected distance-three encoder and terminal length word restore the three-word theorem, including unequal lengths. We state the ideal-key and implementation contracts and distinguish paper proofs, exact certificates, and completed Lean theorems.
+\end{abstract}
+
+\section{Construction, probability model, and scope}\label{sec:construction}
+Apple's HalftimeHash\cite{apple} uses encode--hash--combine compression, a forest of NH trees, and a final NH reduction. It belongs to the class of fast universal constructions also represented by Khuong's UMASH\cite{khuong}; the repair here concerns HalftimeHash's own arithmetic and composition. The preceding independent analyses identified the algebraic and implementation distinctions developed below\cite{audit,proof,second,fourth}.
+
+Put $Q=2^{32}$, $R=2^{64}=Q^2$, $\eps=Q^{-1}$, and $\delta=R^{-1}=\eps^2$. All key words are independent uniform 64-bit words. Messages are fixed independently of the key. An $\eta$-almost-universal family has collision probability at most $\eta$ for each distinct pair. An $\eta$-almost-difference-universal family has probability at most $\eta$ for every fixed prescribed output difference. For vectors the latter condition prescribes every coordinate; it does not mean that output coordinates are independent or uniform.
+
+A block contains $b\in\{1,2,4,8\}$ 64-bit words, processed in parallel. Each encoder input symbol is a triple of blocks. An encoder $J$ maps $d$ symbols to $e$ symbols and should have minimum symbol distance $k$: every distinct input pair differs in at least $k$ encoded symbols. With independently keyed symbol hashes and an integer $k\times e$ matrix $T$,
+\[
+ \operatorname{EHC}(x)=T\bigl(H_0(J(x)_0),\ldots,H_{e-1}(J(x)_{e-1})\bigr)^{\mathsf T}
+ \quad\text{over }\Z_R.
+\]
+Each scalar position within a block undergoes the same encoder and matrix. Symbol keys can be broadcast over those positions and reused across groups.
+
+The elementary NH product on a 64-bit input with 32-bit halves $(x,y)$ and key halves $(s,t)$ is
+\begin{equation}\label{eq:nh}
+ N_{s,t}(x,y)=((x+s)\bmod Q)((y+t)\bmod Q)\pmod R.
+\end{equation}
+NH sums these products using a separate key per pair. Tree nodes pass the first child through unchanged as an accumulator and NH-hash the remaining children. Distinct keys are used at different heights and output coordinates, but nodes at one height may reuse keys. Fresh final NH compresses each coordinate's ordered forest roots, with separate keys for root positions and scalar positions within a block. A separate pool hashes the padded raw tail using shifted, overlapping windows of whole NH pairs. Equal byte lengths have the same forest shape, padding support, and key offsets.
+
+The intended theorem requires this distance property, the matrix conditions below, and independence between these specified key pools. The shipped code needs a separate analysis because its encoder and address layout do not meet every informal assumption in the original proof. Throughout, arithmetic means unsigned modular arithmetic with little-endian loads, eight-bit bytes, 64-bit \texttt{uint64\_t}, and 64-bit \texttt{size\_t}. The fixed implementation additionally requires valid contiguous key storage of the reported extent and disjoint output storage. There is no claim for a short-seed pseudorandom key expansion.
+
+\section{Why the published Lemma 3 fails}\label{sec:gap}
+Lemma 3 in the published paper asserts a tree-stage collision bound $(h2^{-32})^k$, conditional on EHC not having collided\cite[Lemma 3]{apple}. The premise only says the two EHC vectors are distinct. For example, $(0,0)$ and $(1,0)$ differ in the first coordinate, while the second coordinate receives identical input and collides with probability one. For a height-one NH comparison with low input half zero versus one, the first coordinate collides exactly when the other key half is zero, of probability $\eps$. The joint event therefore has probability $\eps$, rather than $\eps^2$, despite independent tree keys. Additional unchanged coordinates give the same obstruction at larger $k$.
+
+This refutes the conditional inference. It does not refute the intended construction's final bound, because its EHC distribution controls how many coordinates can agree. The repair must retain that distribution and its subset probabilities through the tree calculation.
+
+The matrix argument has separate algebraic defects\cite{second}. Write $\det A=q_0 2^{t'}$ with $q_0$ odd. The exponent is the valuation $t'$, not the power of two $2^{t'}$. Multiplication by an adjugate yields a necessary condition. After removing the odd factor, a soluble congruence $2^{t'}z=\beta\pmod R$ becomes
+\[
+ z\equiv\beta/2^{t'}\pmod{2^{64-t'}},
+\]
+with the required division and divisibility condition. Counting these solutions gives an upper bound, not equality of probabilities. Matrix fibres provide a sharper and more direct repair than treating all coordinates independently after this adjugate step.
+
+\section{A repaired theorem for the intended construction}\label{sec:repair}
+\begin{lemma}[Integer NH]\label{lem:nh}
+On equal-length distinct pair strings, NH is $\eps$-almost-difference-universal. The modified tree node is $\eps$-almost-universal.
+\end{lemma}
+\begin{proof}
+Choose a differing half in a differing input pair, and fix its key half. The corresponding two factors $c,c'\in[0,Q)$ are distinct. Condition all other pairs; the remaining uniform half $z$ must solve
+\[
+ cz-c'((z+d)\bmod Q)=v\pmod{Q^2}.
+\]
+Within each wrap interval the nonzero slope gives at most one solution. If $z_1<z_2$ were solutions on different sides, their difference would require
+$(c-c')(z_2-z_1)+Qc'=0\pmod{Q^2}$. This integer is strictly between zero and $Q^2$, whether $c>c'$ or $c<c'$, and cannot vanish. Thus at most one of $Q$ half-keys works. This also proves the sum version by conditioning all other pairs, the standard NH property\cite{umac}.
+
+For a tree node, if a hashed child differs the same proof incorporates the passed-through child's difference into the target. If only the passed-through child differs, collision is impossible. The latter case is an equality guarantee; it is not an almost-difference-universal assertion for every target on all distinct node inputs.
+\end{proof}
+
+\begin{lemma}[Matrix fibres]\label{lem:matrix}
+If an integer square matrix $A$ is nonsingular with Smith invariants $d_i$, every nonempty fibre over $(\Z_{2^{64}})^r$ has size
+\[
+ |\ker A|=\prod_i2^{\min(64,\val(d_i))}\le2^{\val(\det A)}.
+\]
+If $\val(\det A)<64$, equality holds in the last inequality.
+\end{lemma}
+\begin{proof}
+Integer Smith normal form gives unimodular $U,V$ with $UAV=\operatorname{diag}(d_i)$. Their determinants $\pm1$ remain units modulo $2^{64}$, so the two changes of variables preserve fibre size. The scalar kernel has $\gcd(d_i,2^{64})$ elements. Multiply these counts; every soluble fibre is a translate of the kernel. Since determinant valuations add, the final assertion follows. The valuation restriction matters for the equality formula.
+\end{proof}
+
+Fix any $k$ differing encoded symbols, a set denoted $F$. For each output-row subset $S$, put $c_{\varnothing,F}=1$ and
+\begin{equation}\label{eq:c}
+ c_{S,F}=\min_{\substack{J\subseteq F,\ |J|=|S|\\\det T[S,J]\ne0}}
+ 2^{\val(\det T[S,J])}.
+\end{equation}
+If $T_F$ is nonsingular, every row subset has full row rank, so this minimum exists. Condition all symbol keys except a minimizing $J$. Each prescribed joint atom of the selected symbol differences costs at most $\eps^{|S|}$ by independence and Lemma~\ref{lem:nh}. Counting matrix fibres therefore gives, for every target $z_S$,
+\begin{equation}\label{eq:subset}
+ \Prb[\operatorname{EHC}(x)_S-\operatorname{EHC}(y)_S=z_S]
+ \le c_{S,F}\eps^{|S|}.
+\end{equation}
+For whole blocks, choose one scalar position where the original group differs. The distance assumption must hold on that position. Equality of whole blocks implies equality there. Broadcast keys therefore require no independence between scalar positions.
+
+\begin{theorem}[Corrected EHC bound]\label{thm:ehc}
+If every $k$-column submatrix of $T$ is nonsingular and $t=\max_F\val(\det T_F)$, a distance-$k$ encoder with independent $\eps$-almost-difference-universal symbol hashes gives a $2^t\eps^k$-almost-difference-universal EHC family.
+\end{theorem}
+\begin{proof}
+Choose $k$ differing symbols and apply~\eqref{eq:subset} to all output rows. The argument is confined to this fixed group and permits key reuse across other groups.
+\end{proof}
+
+\begin{lemma}[Projection polynomial]\label{lem:projection}
+For nonsingular $A=T_F$ and $u,v\ge0$,
+\begin{equation}\label{eq:projection}
+ \sum_{S\subseteq[k]}c_{S,F}u^{k-|S|}v^{|S|}
+ \le(u+v)^{k-1}(u+2^{\val(\det A)}v).
+\end{equation}
+\end{lemma}
+\begin{proof}
+Integer unimodular column operations triangularize $A$: $B=AV$ is upper triangular. This follows recursively by the Euclidean algorithm on the last row, leaving only its last entry nonzero and then treating the upper-left submatrix. If $e_i=\val(B_{ii})$, then $e_i\ge0$ and $\sum_i e_i=\val(\det A)$.
+
+For a row subset $S$, the principal minor $B[S,S]$ has valuation $\sum_{i\in S}e_i$. By Cauchy--Binet,
+\[
+ \det B[S,S]=\sum_{|J|=|S|}\det A[S,J]\det V[J,S].
+\]
+If every nonzero $A$-minor in this sum had larger valuation, the sum would too. Hence $c_{S,F}\le2^{\sum_{i\in S}e_i}$, and the left side of~\eqref{eq:projection} is at most $\prod_i(u+2^{e_i}v)$. For $a,b\ge1$,
+\[
+ (u+v)(u+abv)-(u+av)(u+bv)=uv(a-1)(b-1)\ge0.
+\]
+Repeatedly combine two exponents into one. Their total becomes $\val(\det A)$, proving~\eqref{eq:projection} for arbitrary dimension, without an independence assumption on EHC coordinates.
+\end{proof}
+
+\begin{lemma}[Forest and Toeplitz tail]\label{lem:forest}
+For different fixed coordinate sequences with a common forest shape of maximum height $h$, the probability that all ordered roots agree is at most $1-(1-\eps)^h\le h\eps$. After fresh final NH, each prescribed output difference has probability at most
+\[
+ a_h=1-(1-\eps)^{h+1}\le(h+1)\eps.
+\]
+For different equally supported padded tails, $k$ whole-pair-shift Toeplitz outputs have joint difference probability at most $\eps^k$.
+\end{lemma}
+\begin{proof}
+Select a tree with different leaf sequences. At each height, condition lower keys and, if a difference survives, select a differing child tuple. The fresh key at that height merges it with probability at most $\eps$. Thus a difference survives to a root with probability at least $(1-\eps)^h$. Using only one selected tuple per height permits key reuse among nodes at that height. If the root lists differ, fresh final NH costs $\eps$ for any target; if they agree, bound the event by one. This gives $a_h$. With blocks, fix all but one differing scalar position's independent final key before applying NH.
+
+For the tail, choose its last differing NH pair. In the last shifted output, its key lies beyond every key relevant to earlier output differences; identical trailing pairs cancel. Condition all other keys and use the one-pair NH bound on an exposed half-key. Remove that output and repeat backwards through the shifts. This gives one factor $\eps$ per output, despite overlap of the full key windows.
+\end{proof}
+
+\begin{theorem}[Repaired collision bound]\label{thm:main}
+Under the construction, distance, matrix, and key assumptions above, distinct equal-length inputs with at least one complete EHC group satisfy
+\begin{equation}\label{eq:main}
+ \Prb[H(x)=H(y)]\le
+ \min\{1,\ 2^{-32k}(h+2)^{k-1}(h+1+2^t)\}.
+\end{equation}
+The same bound holds for every prescribed vector difference. If no complete group exists, or if the equally supported raw tails differ, $2^{-32k}$ suffices.
+\end{theorem}
+\begin{proof}
+For equal tails, select a differing group and let $I_j$ indicate equality of its complete EHC block in coordinate $j$. Conditional on all EHC keys, an identical whole coordinate sequence implies $I_j=1$. A differing sequence costs at most $\rho=(h+1)\eps$ by Lemma~\ref{lem:forest}. The remaining tree and final key sets are independent across coordinates. If $\rho\ge1$ the clipped result is immediate. Otherwise the conditional product and expansion give
+\begin{align*}
+ \Prb[H(x)-H(y)=z]
+ &\le\E\prod_{j=1}^k(\rho+(1-\rho)I_j)\\
+ &\le\sum_{S\subseteq[k]}c_{S,F}\rho^{k-|S|}\eps^{|S|}\\
+ &\le(\rho+\eps)^{k-1}(\rho+2^t\eps),
+\end{align*}
+using~\eqref{eq:subset} and Lemma~\ref{lem:projection}. We dropped only factors $(1-\rho)^{|S|}\le1$. The $I_j$ need not be independent.
+
+For different tails, condition on every non-tail key. Their required difference is a fixed vector and Lemma~\ref{lem:forest} supplies $\eps^k$. With no groups, distinct equal-length inputs have different padded tails by injectivity of padding at a fixed length. These are disjoint cases; no tail error is added to the forest bound.
+\end{proof}
+
+The intended matrices have maximal determinant valuations $t=2,2,3,3$ for $k=2,3,4,5$, respectively. Exact arithmetic checks all $21+84+210+126=441$ maximal minors; none vanishes\cite{second,fourth}. The resulting bounds are
+\begin{center}
+\begin{tabular}{@{}cccl@{}}\toprule
+Output bytes&$(d,e,k)$&$t$&Bound with a group\\\midrule
+16&$(6,7,2)$&2&$(h+2)(h+5)2^{-64}$\\
+24&$(7,9,3)$&2&$(h+2)^2(h+5)2^{-96}$\\
+32&$(7,10,4)$&3&$(h+2)^3(h+9)2^{-128}$\\
+40&$(5,9,5)$&3&$(h+2)^4(h+9)2^{-160}$\\\bottomrule
+\end{tabular}
+\end{center}
+For $k=3$, the subset coefficient sums are at most 6, 9, and 4 at subset sizes one, two, and three, agreeing with $(u+v)^2(u+4v)$. At $h=16$, Theorem~\ref{thm:main} gives
+\begin{equation}\label{eq:83}
+ 6804\cdot2^{-96},\qquad96-\log_2(6804)=83.2678325743\ldots.
+\end{equation}
+This is a pointwise collision guarantee. It is distinct from the word-normalized score in Section~\ref{sec:style}.
+
+\section{The shipped 24-byte core is a refuted variant}\label{sec:shipped}
+The implementation considered here is the saved header at commit
+\texttt{caf7924ceab4721f4}\allowbreak\texttt{e0cc33442b185558ba7f1c4}. The entry points
+\texttt{advanced::V1<3>}, \texttt{V2<3>}, \texttt{V3<3>}, and \texttt{V4<3>}
+return three 64-bit words and reach \texttt{Encode3}. The ordinary Style wrappers instead use output width two. A Style number such as 128 describes the block width, not the hash output width.
+
+\subsection{Distance one and a fixed equal-length witness}
+Write raw blocks as $r_0,r_1,\ldots$, each with $b$ scalar words. In the shipped encoder, the inner distribution function captures its row iterator by value. Changes to the outer iterator do not change the blocks read by the function; the increments also use a single-block stride. Symbolic XOR expansion gives the two added packets
+\begin{equation}\label{eq:bad}
+ J(x)_7=(r_0,r_1,r_2),\qquad
+ J(x)_8=(r_0\xor r_1,r_1\xor r_2,r_2\xor r_3).
+\end{equation}
+The first loop repeats the frozen triple 26 times, so its added terms cancel. All parity information is confined to the first four raw blocks. Changing $r_6$ changes only systematic packet two. Systematicity excludes distance zero, so \texttt{Encode3} has distance exactly one. The same fixed-capture defect gives distance one for the shipped \texttt{Encode4} and \texttt{Encode5}\cite{proof,fourth}.
+
+\begin{proposition}[Equal-length lower bound]\label{prop:bad}
+For each $b\in\{1,2,4,8\}$ there are two fixed distinct strings of length $168b$ bytes whose shipped three-word core collision probability is at least $2^{-32}$.
+\end{proposition}
+\begin{proof}
+Take the all-zero string and change only word number $6b$ (zero based) to the integer one, equivalently byte $48b$ to \texttt{01}. Only the first scalar position of raw block six changes, and by~\eqref{eq:bad} only one encoded packet differs. Write its responsible key word as $A+QZ$. The NH difference is
+\begin{equation}\label{eq:witness}
+ \Delta=\begin{cases}Z,&A<Q-1,\\-(Q-1)Z\pmod R,&A=Q-1.
+ \end{cases}
+\end{equation}
+Both coefficients of $Z$ are odd, so $\Delta=0$ if and only if $Z=0$. Column two of $T_3$, numbered from zero, is $(1,0,1)^{\mathsf T}$. This is therefore exactly the EHC-collision condition for the witness. On that event all subsequent stages receive identical data and the full three-word core collides.
+
+Exactly $Q$ of the $Q^2$ values of the responsible key word have $Z=0$, independently of every other key. This sufficient event has exact probability $1/Q=2^{-32}$. Later stages may introduce additional collisions; the conclusion for the complete core is a lower bound.
+\end{proof}
+The witness lengths are 168, 336, 672, and 1344 bytes. Common additional groups propagate the same sufficient event at longer supported equal lengths. This contradicts the intended distance-three core guarantee at a single group by many orders of magnitude. It is a mathematical key-fibre count, independent of observed frequencies in execution tests.
+
+\subsection{Length-free padding}
+The shipped advanced cores do not encode byte length. Empty input and the one-byte string \texttt{00} both produce no full groups and the same zero-padded raw block, including the extra padded block inserted at an aligned or empty remainder. Their complete core outputs agree for every key. Thus an unrestricted unequal-length theorem for those raw cores has collision bound one. The Style wrappers distinguish lengths by tabulation; the repaired three-word core in Section~\ref{sec:fixed} uses a terminal length word.
+
+\section{The Style wrappers retain a 63-bit bound}\label{sec:style}
+\subsection{Distance-two compression and sharper NH estimates}
+\texttt{Encode2} retains six symbols and appends their XOR. A single changed symbol changes itself and the parity; two changed symbols already give distance two. This proves distance exactly two, also on each scalar position within a block. Its matrix is
+\begin{equation}\label{eq:T2}
+ T_2=\begin{pmatrix}1&0&1&1&2&1&4\\0&1&1&2&1&4&1\end{pmatrix}.
+\end{equation}
+The general minor method gives singleton sum at most five and joint coefficient four, yielding $(h+2)(h+5)\delta$. A property of integer NH improves this bound.
+
+\begin{lemma}[Truncated NH]\label{lem:trunc}
+Every prescribed NH difference modulo $2^{62}$ or $2^{63}$ has probability at most $2\eps$ for distinct equal-length pair strings.
+\end{lemma}
+\begin{proof}
+Expose a differing pair as in Lemma~\ref{lem:nh}, now modulo $M=Q^2/4$. If a nonzero half-input difference has valuation at most 30, choose it for the conditioned factor. On each wrap interval the other half-key has slope with gcd with $M$ at most $Q/4$. Solutions are separated by at least $M/(Q/4)=Q$, giving at most one per interval, or two altogether.
+
+Otherwise the two half-input differences lie in $\{0,Q/2\}$, with one nonzero. Select $Q/2$ for the conditioned factor. The solution period is $Q/2$. If the other difference is zero, a single interval of length $Q$ permits at most two solutions. If it is $Q/2$, the two intervals each have length $Q/2$, each permitting at most one. Thus at most two of $Q$ half-keys work. A prescribed residue modulo $2^{63}$ also prescribes one modulo $2^{62}$.
+\end{proof}
+
+For two selected differing symbols and their output differences $D_1,D_2$, the literal matrix gives
+\begin{equation}\label{eq:sharp}
+ \Prb[D_1=0]+\Prb[D_2=0]\le3\eps,\qquad
+ \Prb[D_1=D_2=0]\le2\eps^2.
+\end{equation}
+An odd selected coefficient in a row costs $\eps$; a row with only even selected coefficients costs at most $2\eps$ by Lemma~\ref{lem:trunc}. At least one row has an odd coefficient. For the joint bound, determinants of valuation at most one use Lemma~\ref{lem:matrix}. The only valuation-two column pairs are $\{0,5\}$ and $\{1,6\}$, triangular systems containing a coefficient four. That equation costs $2\eps$ modulo $2^{62}$, and the other fixes an independently keyed NH difference, costing $\eps$. This proves~\eqref{eq:sharp} for arbitrary fixed offsets as well.
+
+Set $s_h=(1-\eps)^{h+1}$ and $a_h=1-s_h$. Retaining survival factors in the conditional product gives
+\begin{equation}\label{eq:B2}
+ B_2(h)=(a_h+s_h\eps)(a_h+2s_h\eps)
+ \le(h+2)(h+3)2^{-64}.
+\end{equation}
+Indeed the expansion is $a_h^2+a_hs_h\E(I_1+I_2)+s_h^2\E(I_1I_2)$, and~\eqref{eq:sharp} bounds its last two terms. With no group, or with different equally supported raw tails, the sharper $\delta$ bound applies.
+
+\subsection{The forest and its supported length domain}
+The implementation promotes a full level before inserting the next leaf. For $n>0$ groups the live-root counts are its bijective base-eight digits: emit $1+(n-1)\bmod8$ and replace $n$ by $\floor{(n-1)/8}$ repeatedly. Induction on insertion proves this representation, with digits in $\{1,\ldots,8\}$ and no zero holes. The maximum live height is
+\[
+ h(n)=\floor{\log_8(7n+1)}-1.
+\]
+A nine-entry stack is retained, and its finalizer requires an in-array zero sentinel. Therefore set
+\begin{equation}\label{eq:C}
+ C=8+8^2+\cdots+8^8=19{,}173{,}960.
+\end{equation}
+At $n=C$ the digits are eight eights followed by zero; at $n=C+1$ they are nine ones, leaving no sentinel. The supported contiguous domain is $n\le C$, with $h\le7$ and at most 64 roots. A Style group uses $144b$ bytes, so:
+\begin{center}
+\begin{tabular}{@{}crr@{}}\toprule
+Wrapper&Exclusive byte limit&Last core key index\\\midrule
+Style64&2,761,050,384&805\\
+Style128&5,522,100,768&952\\
+Style256&11,044,201,536&1246\\
+Style512&22,088,403,072&1834\\\bottomrule
+\end{tabular}
+\end{center}
+All four wrappers output 64 bits. No theorem here extends the shipped forest beyond these domains.
+
+\subsection{Conditioning with the actual overlapping keys}
+Number the caller's entropy words $K[0],K[1],\ldots$. The eight length-byte tables occupy $[0,2048)$, and the sixteen core-output byte tables occupy $[2048,6144)$. The core begins at index 512: EHC uses $[512,533)$, tree storage is reserved through index 658, and final NH begins at 659. For $r$ live roots, root keys use $2br$ words; the tail needs at most $19b$ distinct words, including its always-inserted padded block and the output shift. Every core read is therefore below
+\[
+ 659+b(2\cdot64+19)\le1835<2048.
+\]
+The overlap is entirely with the length tables. The output tables remain fresh after all lower words have been exposed.
+
+Let $C_0$ denote equality of the complete two-word core signatures, and $D$ the XOR difference of the length-table terms. Condition on all words below 2048, fixing these two objects jointly. If the core signatures differ, one differing byte gives a fresh output-table entry, so equality has probability exactly $\delta$, regardless of $D$. If the signatures agree, all output-table terms cancel and equality holds exactly when $D=0$. Thus
+\begin{equation}\label{eq:wrapper}
+ \Prb[H(x)=H(y)]=\delta\Prb[\neg C_0]+\Prb[C_0\cap\{D=0\}].
+\end{equation}
+At equal lengths this equals $\delta+(1-\delta)\Prb[C_0]$. At unequal lengths, marginally $\Prb[D=0]=\delta$ by ordinary tabulation of two distinct fixed length encodings. Since $\Prb[C_0]\ge\Prb[C_0\cap\{D=0\}]$, equation~\eqref{eq:wrapper} gives
+\begin{equation}\label{eq:unequal}
+ \Prb[H(x)=H(y)]\le2\delta-\delta^2.
+\end{equation}
+No independence between core signatures and length terms is required.
+
+\begin{theorem}[Sharp normalized Style coefficient]\label{thm:style}
+Let $L\ge1$ be an integer word cap and let $x\ne y$ each have at most $8L$ bytes and belong to the supported domain of a fixed Style wrapper. Under the stated flat-address modular-arithmetic model,
+\begin{equation}\label{eq:style}
+ \Prb[H(x)=H(y)]\le L(2^{-63}-2^{-128}).
+\end{equation}
+The coefficient is optimal over these caps. Its length-normalized score, with output floor $2^{-64}$, is $64-\log_2(2-2^{-64})$, conservatively 63 bits.
+\end{theorem}
+\begin{proof}
+Unequal lengths satisfy~\eqref{eq:unequal}, which is no larger than~\eqref{eq:style}. Equal lengths below one group have core bound $\delta$, giving the same expression. At height $h\ge0$, use~\eqref{eq:B2} with $c_h=(h+2)(h+3)$. The group count implies
+\[
+ L\ge18b\frac{8^{h+1}-1}{7}.
+\]
+At $h=0$, $c_h+1=7\le18b$. Successive height thresholds grow by more than eight, while $c_h+1$ grows by less than eight. Therefore $c_h+1\le L$ at every such length. The equal-length probability is at most $\delta(1+(1-\delta)c_h)\le L\delta\le L(2-\delta)\delta$.
+
+For optimality, compare the one-byte strings \texttt{00} and \texttt{01}. Only the first scalar word of one raw pair differs. In each of the two core outputs its NH difference is~\eqref{eq:witness}, vanishing exactly when the high half of its key is zero. The two relevant key words, at indices $659$ and $659+b$, are independent. Core equality therefore has probability exactly $\eps^2=\delta$. The lengths agree and the output tables are independent, so~\eqref{eq:wrapper} gives exactly $2\delta-\delta^2=2^{-63}-2^{-128}$. This attains the coefficient at $L=1$.
+\end{proof}
+The theorem is not a constant $2^{-63}$ collision bound at every length. It is the stated word-cap guarantee. The literal shipped table view is undersized for its later row accesses, and some scalar sums use signed arithmetic. Consequently the shipped result is about the specified flat-address modular function; it is not an unconditional portable ISO C++ theorem. The fixed header corrects the array representation, unsigned sums, and NEON dispatch while preserving the Style function's intended arithmetic\cite{fixed}.
+
+\section{The repaired encoder and an all-length three-word theorem}\label{sec:fixed}
+The corrected header, \texttt{HalftimeHash24-fixed.hpp}, retains three 64-bit outputs. Its encoder iterator refers to a whole three-block row, advances by one row, and is captured by reference by the distribution function. The first parity loop stops at the end of the seven data rows, so parity rows are never read as data. The remaining arithmetic uses flat key-array indexing and explicitly unsigned horizontal sums\cite{fixed}.
+
+\subsection{Distance three of the corrected encoder}
+The repaired \texttt{Encode3} has systematic symbols $x_0,\ldots,x_6\in(\F_2)^3$ at each individual bit position. Its two parity symbols are
+\[
+ P=\bigoplus_{i=0}^6x_i,\qquad Q'=\bigoplus_{i=0}^6A_ix_i,
+\]
+where the binary matrices $A_i$ have the following column encodings (a column $(a,b,c)$ is the integer $a+2b+4c$):
+\begin{equation}\label{eq:encoder}
+ (1,2,4),\ (4,5,2),\ (5,7,6),\ (2,6,5),\ (3,4,1),\ (6,3,7),\ (7,1,3).
+\end{equation}
+Each $A_i$ and each $A_i+A_j$ for $i\ne j$ is invertible; direct elimination checks the seven plus 21 binary $3\times3$ matrices.
+
+\begin{lemma}\label{lem:distance}
+The repaired encoder has minimum packet distance exactly three, for every block width.
+\end{lemma}
+\begin{proof}
+One changed input packet changes itself, $P$, and $Q'$ because its $A_i$ is invertible. With exactly two changed input packets, either their differences have nonzero XOR and $P$ changes, or they are equal to the same nonzero vector and $Q'$ changes by $(A_i+A_j)v\ne0$. Three or more changed systematic packets already suffice. This proves distance at least three; a single changed packet attains three. The XOR identities act separately at every bit and scalar position, so selecting a differing position proves the statement for arbitrary blocks.
+\end{proof}
+
+The exact source certificate also extracts the generator from the actual header by inserting distinct basis bits, then checks every subset of surviving packets by GF(2) Gaussian elimination. A survivor contributes all three of its rows. For \texttt{Encode3}, every seven-packet survivor set has rank 21; all 512 subsets are recorded, including the 36 critical seven-packet subsets. If a nonzero codeword had at most two nonzero packets, erasing them would leave a full-rank survivor set with zero output, a contradiction. The corresponding repaired encoder certificates are:
+\begin{center}
+\begin{tabular}{@{}lrrrrr@{}}\toprule
+Encoder&Data&Encoded&Input rank&Subsets&Distance\\\midrule
+Encode2&6&7&18&128&2\\
+Encode3&7&9&21&512&3\\
+Encode4&7&10&21&1024&4\\
+Encode5&5&9&15&512&5\\\bottomrule
+\end{tabular}
+\end{center}
+These are exact rank certificates, not sampled tests of selected messages.
+
+\subsection{Fixed key layout and the terminal length word}
+For the corrected three-word core, all indices below are word offsets relative to its key pointer. EHC occupies $[0,27)$, reserved tree keys $[27,216)$, and the forest-finalizer keys $[216,216+192b)$, reserving all 64 possible roots and all three output coordinates. A separate Toeplitz pool starts at $A=216+192b$.
+
+If the remainder has $r<168b$ bytes, it is padded into $t=\floor{r/(8b)}+1\le21$ raw blocks, including an extra zero-padded block even when aligned. These blocks are right aligned in the tail pool: their first key position is $A+(21-t)b$. Output $j\in\{0,1,2\}$ shifts its keys by $jb$ whole NH pairs. After the scalar-position sum, append one scalar NH term containing the original total byte length, with key
+\begin{equation}\label{eq:lengthkey}
+ K[A+q_0+jb],\qquad q_0=21b.
+\end{equation}
+The length word is scalar, not broadcast across the block; there are still only three outputs. Modular addition permits this term to be applied after the horizontal sum.
+
+\begin{lemma}[Terminal length separation]\label{lem:length}
+For unequal lengths in the supported byte domain, every prescribed difference of the repaired three-word core has probability at most $2^{-96}$.
+\end{lemma}
+\begin{proof}
+The lengths are distinct 64-bit integers, so at least one 32-bit half differs. For output $j$, write its difference as a residual plus
+\[
+ \NH(|x|,K[A+q_0+jb])-\NH(|y|,K[A+q_0+jb]).
+\]
+All data-tail indices in output $i$ are at most $A+q_0-1+ib$, and its length key is $A+q_0+ib$. Thus every earlier output $i<j$ ignores the length key of output $j$, and output $j$'s residual ignores its own length key. The forest pool is disjoint for both messages even if their root counts differ.
+
+Fix, in each length key, the half associated with a differing length half. Expose the other halves in output order. Lemma~\ref{lem:nh} permits at most one of $Q$ values for each target equation after earlier halves are known; earlier equations ignore the next half. The triangular count is at most $Q^{-3}=2^{-96}$. No independence of residual outputs is required, and absent leading data-tail terms are simply absent, rather than being replaced by NH of zero.
+\end{proof}
+
+\begin{theorem}[Repaired three-word core]\label{thm:fixed}
+Let $b\in\{1,2,4,8\}$ and $C$ be~\eqref{eq:C}. For distinct inputs satisfying
+\[
+ 0\le |x|,|y|<168b(C+1),
+\]
+the fixed core has, for every vector target, difference probability at most $2^{-96}$ when lengths differ, when equal-length padded tails differ, or when equal lengths have no complete group. In every remaining case, for a common forest-height upper bound $h$,
+\begin{equation}\label{eq:fixed}
+ \Prb[H(x)-H(y)=v]\le\min\{1,(h+2)^2(h+5)2^{-96}\}.
+\end{equation}
+In particular it has the $83.27$-bit guarantee~\eqref{eq:83}. On its actual retained stack $h\le7$, the stronger uniform bound is $972\cdot2^{-96}$, or $86.0751874964\ldots$ collision bits.
+\end{theorem}
+\begin{proof}
+Unequal lengths use Lemma~\ref{lem:length}. At equal lengths the terminal terms cancel, and the two tails have the same right alignment and support. If the tails differ, use the Toeplitz part of Lemma~\ref{lem:forest}; below one group, distinct inputs necessarily have different tails. Otherwise select a differing group and a scalar position where it differs. Lemma~\ref{lem:distance} supplies three differing encoded symbols there. The unchanged $T_3$ matrix has nonzero minors and maximum valuation two. Conditional on the EHC keys, the three tree/finalizer pools are independent. Theorem~\ref{thm:main} therefore gives $(h+2)^2(h+5)2^{-96}$, also for a nonzero target. The actual forest schedule is fixed by public length and has height at most seven. Substituting $h=7$ or the conservative abstract value 16 proves the displayed constants.
+\end{proof}
+An actual height-16 tree cannot be processed by this retained stack; its 83.27-bit label is conservative on the supported domain. The fixed code does not expand that domain or add a runtime length check.
+
+For the 192-bit output floor, the corrected core has normalized score exactly 96 bits under the word-cap convention. One valid envelope is $2^{-96}$ below $L=21b$, and otherwise $(h+2)^2(h+5)2^{-96}$ with $h=\min(7,\floor{\log_8\floor{L/(21b)}})$. At the first group, $L/((h+2)^2(h+5))=21b/20\ge1$. Later thresholds grow by eight while the coefficient grows by at most $54/20<8$; within each plateau the score increases. The one-byte pair \texttt{00}, \texttt{01} attains collision probability $2^{-96}$: its equal length terms cancel and the three distinct data-key high halves must be zero. This normalized score is consistent with the separate 83.27-bit pointwise statement.
+
+The fixed three-word allocation is exactly the prefix of $216+215b+1$ words: 432, 647, 1077, or 1937 words for the four widths. These extents include reserved holes and the terminal keys; unused words integrate out of the probability experiment. The fixed Style wrappers keep Encode2 and their length-byte tables, preserve intended output values, and satisfy Theorem~\ref{thm:style}. Their flat-array and unsigned-arithmetic repairs support the stated C++ object contract without changing that mathematical function.
+
+\section{Lean status and implementation boundary}\label{sec:lean}
+The supplied status record\cite{lean} reports successful Lean 4.24.0 builds and an audit of 237 new proof declarations plus 57 inherited declarations. The reported theorems use only subsets of \texttt{propext}, \texttt{Classical.choice}, and \texttt{Quot.sound}; finite integer certificates use kernel-checked reduction and arithmetic. The following distinctions are material.
+\begin{itemize}
+\item Integer NH, its wrap argument, the correctly scoped passed-through accumulator, and the $2\eps$ truncated-output theorem are checked.
+\item The general-dimensional matrix-fibre theorem and corrected EHC theorem are checked. For $T_2,T_3$, all required minors and subset coefficient bounds are checked. The general arbitrary-dimension projection-polynomial inequality of Lemma~\ref{lem:projection} is a paper proof; the concrete $k=2,3$ inequalities needed by the checked constructions are formalized.
+\item The scalar abstract forest, whole-pair-shift Toeplitz tail, and the $6804\cdot2^{-96}$ theorem are checked. The byte-input Style model additionally includes word packing, broadcast keys, the sharp $B_2(h)$ bound, flat key addresses, overlap conditioning, and the instantiated normalized probability theorem \texttt{modeledStyleHash\_normalized}.
+\item The added \texttt{terminal\_length\_three\_bound} in \texttt{FixedLength.lean} checks the terminal-word argument using the same NH and triangular-counting theorems. Its key-index residual condition is discharged for the fixed header by the explicit inequalities preceding Lemma~\ref{lem:length}.
+\end{itemize}
+The fixed encoder's source-derived ranks and its address/schedule correspondence are exact certificates and paper arguments. Neither the original abstract distance-three theorem nor the new terminal-word theorem is a complete C++-to-Lean refinement. In particular the abstract model's public schedule conditions are proved mathematically for the stated promotion schedule, but the entire C++ loop, its machine instructions, compiler transformations, object lifetimes, and all optimized paths are not machine-verified by these files. The optimality witnesses for the Style coefficient and the repaired core's score are paper proofs, not reported Lean milestones.
+
+These limits concern the type of evidence. The repaired mathematical bounds, the shipped distance-one lower bound, and the supported-domain Style theorem are unconditional within their explicitly stated ideal-key arithmetic models. No result here asserts a collision guarantee for the benchmark's PRNG-derived key distribution or for out-of-domain calls.
+
+\appendix
+\section{Matrices and exact reproduction}\label{app:reproduce}
+The three-word combine matrix is
+\[
+ T_3=\begin{pmatrix}
+ 0&0&1&4&1&1&2&2&1\\
+ 1&1&0&0&1&4&1&2&2\\
+ 1&4&1&1&0&0&2&1&2
+ \end{pmatrix}.
+\]
+For completeness the higher-dimensional matrices used in the general specialization table are
+\[
+ T_4=\begin{pmatrix}
+ 0&0&0&1&1&4&2&4&1&1\\
+ 0&1&2&0&0&1&1&2&4&1\\
+ 2&0&1&0&4&0&1&1&1&1\\
+ 1&1&0&1&0&0&4&1&2&8
+ \end{pmatrix},\quad
+ T_5=\begin{pmatrix}
+ 1&0&0&0&0&1&1&2&4\\
+ 0&1&0&0&0&1&2&1&7\\
+ 0&0&1&0&0&1&3&8&5\\
+ 0&0&0&1&0&1&4&9&8\\
+ 0&0&0&0&1&1&5&3&9
+ \end{pmatrix}.
+\]
+Maximal-valuation examples, with zero-based columns, are $(0,5)$ with determinant four in $T_2$, $(0,1,3)$ with determinant 12 in $T_3$, $(0,1,5,6)$ with determinant $-24$ in $T_4$, and $(0,1,2,4,8)$ with determinant $-8$ in $T_5$. All maximal minors, the minimum nonzero subset costs~\eqref{eq:c}, and the binary matrices in~\eqref{eq:encoder} can be checked with exact integer elimination; floating-point determinants are unnecessary.
+
+All following paths are relative to the post's \texttt{records/} directory. The implementation and accompanying theorem are \path{halftime/HalftimeHash24-fixed.hpp} and \path{halftime/THEOREM.md}. The earlier wrapper and shipped-core analysis is \path{halftime/PROOF.md}; the independent mathematical derivations are \path{halftime/second_review_summary.md} and \path{halftime/fourth_review_summary.md}. The exact source certificate map is:
+\begin{longtable}{@{}>{\raggedright\arraybackslash}p{56mm}>{\raggedright\arraybackslash}p{96mm}@{}}
+\toprule
+Path within \texttt{halftime/certificates/}&Role\\\midrule\endhead
+\path{src/matrix.cpp}, \path{src/rank.py}&Extract the actual encoder generator and check every surviving-packet subset over $\F_2$; the full output is \path{rank-certificate.json}.\\
+\path{src/score.py}&Exact supported-domain, key-layout, and word-cap comparisons; results in \path{scores-layout.json}.\\
+\path{src/compare_style.py}&Compare intended Style outputs across the source repairs.\\
+\path{src/check_objects.py}&Check the fixed flat-array and unsigned-arithmetic source conditions.\\
+\path{src/verify-xeon.sh}, \path{src/final-xeon.sh}&Build and execute the implementation certificates and collect their reports.\\
+\path{lean/FixedLength.lean}, \path{lean/FixedLength.log}&The terminal-length theorem and its axiom report.\\
+\path{lean/base/}&Pinned mathematical proof development, toolchain, matrix certificates, and audits.\\\bottomrule
+\end{longtable}
+The fixed-header rank extractor tests the actual XOR maps rather than an independently designed replacement. Its all-subset ranks, together with the proof following~\eqref{eq:encoder}, establish encoder distance. Guard-page checks exercise the reported exact extents at short lengths, group boundaries, and forest promotions; they supplement the symbolic address map and do not replace it. \path{verification-summary.json} records the archived execution results and source provenance.
+
+The LaTeX source embeds its BibTeX database and compiles with \texttt{latexmk -pdf}. The paper's theorems use the proved counting arguments and exact certificates; finite execution comparisons are evidence of source correspondence, rather than an extrapolation to every input or every compiler.
+
+\bibliographystyle{plain}
+\bibliography{halftime_repair}
+\end{document}
